@@ -16,10 +16,6 @@ The app runs as a static browser-based frontend. It organizes projects around ta
 - **AI-ready context model**: Provide structured project, table, entity, field, asset, and card-style context to AI tools, then apply validated data patches.
 - **No build step required**: The project can run directly in a modern browser.
 
-## Screenshot
-
-![GameDataEditor main interface](screenshots/ScreenShot_2026-05-09_180304_372.png)
-
 ## Quick Start
 
 Clone the repository and open `index.html`:

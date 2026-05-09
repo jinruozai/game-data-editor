@@ -1,0 +1,1271 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>GameDataEditor</title>
+  <link rel="stylesheet" href="vendor/ef.css?v=58" />
+  <style>
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: var(--ef-bg-0, #1e1e22);
+    }
+    /* #app lives inside .gde-body; must inherit its height, not 100vh.
+       Using 100vh would push the bottom dock off-screen by topbar height. */
+    #app { width: 100%; height: 100%; }
+
+    /* Top toolbar */
+    .gde-topbar {
+      display: flex; align-items: center; gap: 8px;
+      height: 36px; padding: 0 10px;
+      box-sizing: border-box;
+      background: var(--ef-bg-1, #26262b);
+      border-bottom: 1px solid var(--ef-border, #3a3a40);
+      color: var(--ef-fg-1, #d6d6d9);
+      font-size: 13px;
+      user-select: none;
+    }
+    .gde-topbar .gde-brand {
+      display: flex; align-items: center; gap: 8px;
+      padding: 4px 10px; border-radius: var(--ef-r-2, 4px);
+      cursor: pointer; font-weight: 600;
+    }
+    .gde-topbar .gde-brand:hover { background: var(--ef-hover, rgba(255,255,255,0.06)); }
+    .gde-topbar .gde-brand-icon {
+      width: 18px; height: 18px; border-radius: 4px;
+      background: url("logo.png") center / contain no-repeat;
+    }
+    .gde-topbar .gde-sep { flex: 1; }
+    .gde-topbar .gde-status {
+      font-size: 12px; opacity: .7;
+      display: flex; gap: 12px;
+    }
+    .gde-topbar .gde-status b { color: var(--ef-accent, #4a90e2); font-weight: 600; }
+
+    /* Body below topbar */
+    /* width:100% not 100vw 闁?100vw includes the vertical scrollbar gutter,
+       overflowing body.clientWidth by ~10px and triggering a phantom
+       horizontal scrollbar. Same reasoning as #app's height above. */
+    .gde-body {
+      height: calc(100dvh - 36px);
+      width: 100%;
+      overflow: hidden;
+    }
+
+    /* Log dock bottom toolbar (collapse toggle) */
+    .gde-logbar {
+      display: flex; align-items: center; gap: 8px;
+      width: 100%; height: 100%;
+      padding: 0 10px; box-sizing: border-box;
+      background: var(--ef-bg-0, #141414);
+      color: var(--ef-fg-2, #9a9a9a);
+      font: 11px var(--ef-font-ui, system-ui);
+      letter-spacing: .04em; text-transform: uppercase;
+      cursor: pointer; user-select: none;
+    }
+    .gde-logbar:hover { color: var(--ef-fg-0, #d4d4d4); }
+    .gde-logbar-title { font-weight: 600; }
+    .gde-logbar-spacer { flex: 1; }
+    .gde-logbar-btn {
+      background: transparent; border: 0; padding: 2px 6px;
+      color: inherit; font: inherit; cursor: pointer;
+      border-radius: 3px; letter-spacing: 0; text-transform: none;
+    }
+    .gde-logbar-btn:hover { background: var(--ef-hover, rgba(255,255,255,0.06)); color: var(--ef-fg-0, #d4d4d4); }
+    .gde-logbar-toggle { font-size: 10px; }
+
+    /* Left-dock panel strip (icon-only vertical tab bar on the right side) */
+    .gde-panelstrip {
+      display: flex; flex-direction: column; align-items: stretch;
+      width: 100%; height: 100%;
+      background: var(--ef-bg-0, #141414);
+    }
+    .gde-panelstrip-btn {
+      display: flex; align-items: center; justify-content: center;
+      width: 100%; height: 28px; padding: 0; margin: 0;
+      background: transparent; border: 0; cursor: pointer;
+      color: var(--ef-fg-2, #9a9a9a);
+      font-size: 14px; line-height: 1;
+      border-right: 2px solid transparent;
+    }
+    .gde-panelstrip-btn:hover {
+      background: var(--ef-hover, rgba(255,255,255,0.06));
+      color: var(--ef-fg-0, #d4d4d4);
+    }
+    .gde-panelstrip-btn.is-active {
+      color: var(--ef-fg-0, #d4d4d4);
+      border-right-color: var(--ef-accent, #569eff);
+      background: var(--ef-bg-1, #1a1a1a);
+    }
+
+    /* GameData panel */
+    .gde-gd-toolbar {
+      display: flex; gap: 4px; padding: 6px;
+      border-bottom: 1px solid var(--ef-border, #2d2d2d);
+      background: var(--ef-bg-0, #141414);
+    }
+    .gde-gd-toolbar input {
+      flex: 1; min-width: 0;
+      background: var(--ef-bg-2, #1a1a1a);
+      color: var(--ef-fg-0, #d4d4d4);
+      border: 1px solid var(--ef-border-input, #333);
+      border-radius: 3px;
+      padding: 3px 6px; font: 11px var(--ef-font-ui, system-ui);
+    }
+    .gde-gd-row {
+      display: flex; align-items: baseline; gap: 8px;
+      padding: 4px 8px; cursor: pointer;
+      font: 11px var(--ef-font-ui, system-ui);
+      color: var(--ef-fg-1, #bfbfbf);
+      border-left: 2px solid transparent;
+    }
+    .gde-gd-row:hover { background: var(--ef-hover, rgba(255,255,255,0.06)); }
+    .gde-gd-row.is-active {
+      background: var(--ef-selected, rgba(86,158,255,0.18));
+      color: var(--ef-fg-0, #d4d4d4);
+      border-left-color: var(--ef-accent, #569eff);
+    }
+    .gde-gd-id {
+      flex: 1 1 auto; min-width: 0;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .gde-gd-path {
+      flex: 0 0 auto;
+      color: var(--ef-fg-3, #6a6a70);
+      font-size: 10px;
+    }
+    .gde-gd-empty {
+      padding: 16px 12px; text-align: center;
+      color: var(--ef-fg-3, #6a6a70);
+      font: 11px var(--ef-font-ui, system-ui); font-style: italic;
+    }
+
+    /* Log level dropdown 闁?replaces the 4 filter buttons */
+    .gde-log-levelsel {
+      background: var(--ef-bg-2, #1a1a1a);
+      color: var(--ef-fg-0, #d4d4d4);
+      border: 1px solid var(--ef-border-input, #333);
+      border-radius: 3px;
+      padding: 2px 4px; font: 11px var(--ef-font-ui, system-ui);
+      cursor: pointer;
+    }
+
+    /* Generic icon button 闁?square, glyph-only, no padding for label text */
+    .gde-iconbtn {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 24px; height: 24px; padding: 0;
+      background: var(--ef-bg-2, #1a1a1a);
+      color: var(--ef-fg-1, #bfbfbf);
+      border: 1px solid var(--ef-border, #2d2d2d);
+      border-radius: 3px;
+      font-size: 14px; line-height: 1;
+      cursor: pointer; user-select: none;
+    }
+    .gde-iconbtn:hover {
+      background: var(--ef-hover, rgba(255,255,255,0.06));
+      color: var(--ef-fg-0, #d4d4d4);
+      border-color: var(--ef-border-strong, #3b3b3b);
+    }
+    .gde-iconbtn.is-primary {
+      background: var(--ef-accent, #569eff);
+      color: var(--ef-accent-fg, #fff);
+      border-color: var(--ef-accent, #569eff);
+    }
+    .gde-iconbtn.is-primary:hover { background: var(--ef-accent-soft, #7fb5ff); }
+    .gde-iconbtn.is-danger { color: var(--ef-error, #e07a78); }
+
+    /* Tab bar component 闁?lives in the center dock's toolbar, NOT outside. */
+    .gde-tabbar {
+      display: flex; align-items: stretch;
+      width: 100%; height: 100%;
+      background: var(--ef-bg-0, #141414);
+      user-select: none; overflow: hidden;
+    }
+    .gde-tabbar .ef-ui-tab { flex: 1 1 auto; min-width: 0; }
+    .gde-tabbar-empty {
+      display: flex; align-items: center; padding: 0 12px;
+      color: var(--ef-fg-3, #6a6a70);
+      font: 12px var(--ef-font-ui, system-ui);
+      font-style: italic;
+    }
+    /* Transient-tab italic hint 闁?VSCode convention */
+    .gde-tabbar .ef-ui-tab-btn-transient .ef-ui-tab-title { font-style: italic; }
+
+    /* Card grid */
+    .gde-cards-wrap {
+      position: relative; width: 100%; height: 100%;
+      overflow: auto; padding: 12px;
+      box-sizing: border-box;
+    }
+    .gde-cards-grid {
+      display: grid; gap: 10px; width: 100%;
+      position: relative;
+    }
+    /* Cards sit on top of the dock body 闁?use --ef-bg-raised (a step lighter
+     * than bg-1) + a subtle shadow so the grid feels "lifted". */
+    /* Card dimensions come from the table view's cardSize. card.js scales
+       the cardStyle root to fill the actual card while preserving its
+       design aspect ratio. Visual chrome lives on the cardStyle root. */
+    .gde-card {
+      position: relative;
+      overflow: hidden; cursor: pointer;
+      transition: transform 120ms, box-shadow 120ms;
+    }
+    .gde-card:hover {
+      border-color: var(--ef-border-strong, #55555c);
+      transform: translateY(-1px);
+      box-shadow: var(--ef-shadow-2, 0 2px 6px rgba(0,0,0,.30));
+    }
+    .gde-card.is-selected {
+      border-color: var(--ef-accent, #4a90e2);
+      background: color-mix(in srgb, var(--ef-accent, #4a90e2) 16%, var(--gde-item-bg, var(--ef-bg-raised)));
+      box-shadow: 0 0 0 2px var(--ef-accent, #4a90e2) inset, 0 0 0 1px color-mix(in srgb, var(--ef-accent) 40%, transparent), var(--ef-shadow-2);
+    }
+    .gde-card.is-selected:hover {
+      border-color: var(--ef-accent-soft, #7fb5ff);
+      background: color-mix(in srgb, var(--ef-accent, #4a90e2) 22%, var(--gde-item-bg, var(--ef-bg-raised)));
+      box-shadow: 0 0 0 2px var(--ef-accent-soft, #7fb5ff) inset, 0 0 0 1px var(--ef-accent, #4a90e2), var(--ef-shadow-2);
+    }
+    .gde-card.is-dragging { opacity: .4; }
+    .gde-card .gde-card-inner { position: absolute; inset: 0; overflow: hidden; }
+
+    .gde-card-el { position: absolute; overflow: hidden; }
+    .gde-card-el.text {
+      display: flex; align-items: center; padding: 0 6px;
+      color: var(--ef-fg-1, #d6d6d9); font-size: 12px;
+    }
+    .gde-card-el.text.title { font-weight: 600; font-size: 14px; }
+    .gde-card-el.text.caption { font-size: 11px; opacity: .75; }
+    .gde-card-el.img img { width: 100%; height: 100%; object-fit: cover; }
+    .gde-card-el.img .gde-img-fallback {
+      width: 100%; height: 100%;
+      background: repeating-linear-gradient(
+        45deg, #2a2a30, #2a2a30 4px, #32323a 4px, #32323a 8px
+      );
+      display: flex; align-items: center; justify-content: center;
+      color: #555; font-family: ui-monospace, monospace; font-size: 10px;
+    }
+    .gde-card-el.enum {
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 3px;
+      padding: 1px 6px; font-size: 10px; font-weight: 600;
+      color: white;
+    }
+
+    /* List mode */
+    .gde-list {
+      width: 100%; border-collapse: collapse;
+      font-size: 12px; color: var(--ef-fg-1, #d6d6d9);
+    }
+    .gde-list th, .gde-list td {
+      padding: 6px 10px; text-align: left;
+      border-bottom: 1px solid var(--ef-border, #3a3a40);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      max-width: 220px;
+    }
+    .gde-list th {
+      background: var(--ef-bg-1, #26262b);
+      font-weight: 600; position: sticky; top: 0; z-index: 1;
+      font-size: 11px; letter-spacing: .5px; text-transform: uppercase;
+      color: var(--ef-fg-3, #8a8a90);
+    }
+    .gde-list tr { cursor: pointer; }
+    .gde-list tr:hover td { background: var(--ef-hover, rgba(255,255,255,0.04)); }
+    .gde-list tr.is-selected td { background: rgba(74, 144, 226, 0.14); }
+
+    /* Inspector */
+    .gde-inspector { padding: 12px; font-size: 12px; color: var(--ef-fg-1, #d6d6d9); }
+    .gde-inspector .gde-inspector-empty {
+      display: flex; flex-direction: column; gap: 8px;
+      align-items: center; justify-content: center;
+      height: 100%; color: var(--ef-fg-3, #8a8a90);
+      padding: 40px 16px; text-align: center;
+    }
+    .gde-prop-row {
+      display: grid; grid-template-columns: 110px 1fr;
+      gap: 8px; padding: 6px 0;
+      align-items: center; min-height: 28px;
+    }
+    .gde-prop-label {
+      font-size: 11px; color: var(--ef-fg-3, #8a8a90);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .gde-prop-label .gde-req { color: #e06c75; margin-left: 2px; }
+    .gde-prop-value { min-width: 0; }
+    .gde-prop-value input[type="text"],
+    .gde-prop-value input[type="number"],
+    .gde-prop-value input[type="date"],
+    .gde-prop-value textarea,
+    .gde-prop-value select {
+      width: 100%; box-sizing: border-box;
+      background: var(--ef-bg-0, #1e1e22);
+      border: 1px solid var(--ef-border, #3a3a40);
+      color: var(--ef-fg-1, #d6d6d9);
+      border-radius: var(--ef-r-1, 3px);
+      padding: 4px 8px; font-size: 12px; outline: none;
+      font-family: inherit;
+    }
+    .gde-prop-value input:focus, .gde-prop-value textarea:focus, .gde-prop-value select:focus {
+      border-color: var(--ef-accent, #4a90e2);
+    }
+    .gde-inspector-header {
+      padding-bottom: 10px; margin-bottom: 8px;
+      border-bottom: 1px solid var(--ef-border, #3a3a40);
+    }
+    .gde-inspector-header .gde-id {
+      font-family: ui-monospace, monospace; font-size: 11px;
+      color: var(--ef-fg-3, #8a8a90);
+    }
+    .gde-inspector-header .gde-name {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 14px; font-weight: 600; margin-top: 2px;
+    }
+    .gde-inspector-header .gde-name .ef-ui-copy-btn {
+      flex: 0 0 auto;
+    }
+    .gde-inspector-ro-badge {
+      display: inline-block; margin-left: 6px; vertical-align: middle;
+      font-size: 10px; font-weight: 500; padding: 1px 5px;
+      border-radius: var(--ef-r-2, 3px);
+      background: var(--ef-bg-3, #333); color: var(--ef-fg-3, #888);
+    }
+    /* `display: inline-block` above would otherwise override the UA
+       stylesheet's `[hidden] { display: none }` because class rules beat
+       attribute defaults. Reassert it. */
+    .gde-inspector-ro-badge[hidden] { display: none; }
+    .ef-ui-property-panel[inert] { opacity: 0.45; }
+
+    /* 闁冲厜鍋撻柍鍏夊亾 ref_id field (inspector.js ref_id renderer) 闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾 */
+    .gde-refid {
+      display: flex; align-items: center; gap: 4px;
+      padding: 2px 4px; min-width: 0;
+      border: 1px solid var(--ef-border, #3a3a40);
+      border-radius: var(--ef-r-2, 3px);
+      background: var(--ef-bg-2, #242428);
+    }
+    .gde-refid-face {
+      flex: 1 1 auto; min-width: 0; overflow: hidden;
+      display: flex; align-items: center; min-height: 22px;
+      color: var(--ef-fg-1, #d6d6d9);
+      font-size: 12px;
+    }
+    .gde-refid-face.is-empty { color: var(--ef-fg-3, #8a8a90); font-style: italic; }
+    .gde-refid-show { flex: 1 1 auto; min-width: 0; }
+
+    /* 闁冲厜鍋撻柍鍏夊亾 ref_id picker popover 闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾 */
+    .gde-refid-picker {
+      display: flex; flex-direction: column;
+      min-width: 280px; max-width: 420px;
+      background: var(--ef-bg-1, #1a1a1f);
+      border: 1px solid var(--ef-border, #3a3a40);
+      border-radius: var(--ef-r-2, 3px);
+      overflow: hidden;
+    }
+    .gde-refid-picker-input {
+      border: 0; outline: 0; padding: 8px 10px;
+      background: var(--ef-bg-2, #242428);
+      color: var(--ef-fg-0, #f0f0f5);
+      font: 12px ui-monospace, Menlo, monospace;
+      border-bottom: 1px solid var(--ef-border, #3a3a40);
+    }
+    .gde-refid-picker-list {
+      max-height: 280px; overflow: auto; padding: 2px 0;
+    }
+    .gde-refid-picker-row {
+      padding: 4px 10px; cursor: pointer;
+      font: 12px ui-monospace, Menlo, monospace;
+      color: var(--ef-fg-1, #d6d6d9);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .gde-refid-picker-row.is-focused,
+    .gde-refid-picker-row:hover {
+      background: color-mix(in srgb, var(--ef-accent, #4a90e2) 18%, transparent);
+      color: var(--ef-fg-0, #f0f0f5);
+    }
+    .gde-refid-picker-sep { color: var(--ef-fg-3, #8a8a90); }
+    .gde-refid-picker-hit {
+      background: color-mix(in srgb, var(--ef-accent, #4a90e2) 40%, transparent);
+      color: var(--ef-fg-0, #f0f0f5);
+      border-radius: 2px; padding: 0 1px;
+    }
+    .gde-refid-picker-empty {
+      padding: 12px; text-align: center; font-size: 12px;
+      color: var(--ef-fg-3, #8a8a90);
+    }
+
+    /* 闁冲厜鍋撻柍鍏夊亾 table_meta form (Inspector kind='table_meta') 闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾 */
+    .gde-table-meta { padding: 8px 10px; display: flex; flex-direction: column; gap: 10px; }
+    .gde-tm-section-label {
+      font-size: 11px; font-weight: 600; letter-spacing: 0.5px;
+      text-transform: uppercase; color: var(--ef-fg-3, #8a8a90);
+    }
+    .gde-tm-ref-display { display: flex; flex-direction: column; gap: 6px; }
+    .gde-tm-ref-row { display: grid; grid-template-columns: 76px minmax(0, 1fr); align-items: center; gap: 8px; }
+    .gde-tm-ref-label { color: var(--ef-fg-2, #aaa); font-size: 12px; }
+    .gde-tm-ref-row .ef-ui-combobox { width: 100%; }
+    .gde-tm-fields { display: flex; flex-direction: column; gap: 4px; }
+    .gde-tm-field {
+      border: 1px solid var(--ef-border, #3a3a40);
+      border-radius: var(--ef-r-2, 3px);
+      background: var(--ef-bg-2, #242428);
+      overflow: hidden;
+    }
+    .gde-tm-field.is-unknown { border-color: var(--ef-error, #e07a78); }
+    .gde-tm-field.is-unknown .gde-tm-field-type { color: var(--ef-error, #e07a78); }
+    .gde-tm-field-head {
+      display: flex; align-items: center; gap: 6px;
+      padding: 4px 6px; cursor: pointer;
+    }
+    .gde-tm-field-head:hover { background: var(--ef-hover, #2a2a30); }
+    .gde-tm-caret {
+      display: inline-block; width: 12px; text-align: center;
+      color: var(--ef-fg-3, #8a8a90); font-size: 9px;
+      transition: transform var(--ef-dur-fast, 80ms);
+    }
+    .gde-tm-field-name {
+      flex: 1 1 auto; min-width: 0;
+      font-size: 12px; font-weight: 500;
+      color: var(--ef-fg-0, #f0f0f5);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .gde-tm-field-type {
+      font-size: 10px; color: var(--ef-fg-3, #8a8a90);
+      font-family: ui-monospace, Menlo, monospace;
+    }
+    .gde-tm-field-body {
+      padding: 6px 10px;
+      border-top: 1px solid var(--ef-border, #3a3a40);
+      background: var(--ef-bg-1, #1a1a1f);
+    }
+    .gde-tm-add-field { align-self: flex-start; margin-top: 2px; }
+    .gde-tm-unknown-hint {
+      font-size: 11px; color: var(--ef-error, #e07a78);
+      padding: 2px 0; line-height: 1.5;
+    }
+
+    /* Orange field name when any of its sub-keys is overridden. Row border
+       keeps the default color; only the label turns 闁?keeping the visual
+       weight low so a lot of overrides doesn't become a wall of orange. */
+    .gde-tm-field.has-override .gde-tm-field-name {
+      color: var(--ef-warn, #d4ba6b);
+    }
+
+    /* Per-sub-key override row: [label] [editor-component] [action-btn?]
+       The component is whatever ui.editorFor renders (input / select / 闁?,
+       matching the TypeConfig panel 1:1 so the two surfaces look identical. */
+    .gde-tm-override-editor {
+      display: flex; flex-direction: column; gap: 4px;
+    }
+    .gde-tm-override-row {
+      display: grid;
+      grid-template-columns: 84px 1fr;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+    }
+    .gde-tm-override-label {
+      color: var(--ef-fg-3, #8a8a90);
+      font-family: ui-monospace, Menlo, monospace;
+      font-size: 11px;
+      text-align: right;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .gde-tm-override-cell {
+      display: flex; align-items: center; gap: 4px;
+      min-width: 0;
+    }
+    .gde-tm-override-component { flex: 1 1 auto; min-width: 0; }
+    .gde-tm-override-action { flex: 0 0 auto; opacity: 0.7; }
+    .gde-tm-override-action:hover { opacity: 1; }
+
+    /* Identity rows and inherited-state overridable rows are visually the
+       same: muted, non-interactive editor showing the TypeConfig value.
+       Identity has no button at all; inherited has a lock (闁?.
+       pointer-events:none on the component disables interaction uniformly
+       whether it's an <input>, <select>, or richer editor. */
+    .gde-tm-override-row.is-identity  .gde-tm-override-component,
+    .gde-tm-override-row.is-inherited .gde-tm-override-component {
+      pointer-events: none;
+      opacity: 0.6;
+      font-style: italic;
+    }
+    /* Overridden state: normal component, with a warm outline hint. */
+    .gde-tm-override-row.is-overridden .gde-tm-override-component :is(input,select,textarea,.ef-ui-field) {
+      border-color: color-mix(in srgb, var(--ef-warn, #d4ba6b) 55%, var(--ef-border-input, #3a3a40));
+    }
+
+    /* Tools row: primary actions (Check / Fix / Merge) flow as equal-width
+       cells 闁?auto-fit keeps them tidy at any panel width (3-across when
+       wide, stacking gracefully when narrow). The destructive "Delete
+       table" claims its own row, right-aligned, with extra top margin as
+       soft visual separation from the non-destructive group above. */
+    .gde-tm-tools {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+      gap: 6px;
+      padding-top: 10px;
+      border-top: 1px solid var(--ef-border, #3a3a40);
+    }
+    .gde-tm-tools > button { min-width: 0; }
+    .gde-tm-tools-delete {
+      grid-column: 1 / -1;
+      /* default justify-self (stretch) = full row width */
+      margin-top: 8px;
+    }
+
+    /* 闁冲厜鍋撻柍鍏夊亾 Add-field picker (popover) 闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋?*/
+    .gde-tm-picker {
+      display: flex; flex-direction: column;
+      min-width: 240px; max-width: 380px;
+      background: var(--ef-bg-1, #1a1a1f);
+      border: 1px solid var(--ef-border, #3a3a40);
+      border-radius: var(--ef-r-2, 3px);
+      overflow: hidden;
+    }
+    .gde-tm-picker-input {
+      border: 0; outline: 0; padding: 8px 10px;
+      background: var(--ef-bg-2, #242428);
+      color: var(--ef-fg-0, #f0f0f5);
+      font: 12px var(--ef-font-ui, sans-serif);
+      border-bottom: 1px solid var(--ef-border, #3a3a40);
+    }
+    .gde-tm-picker-list { max-height: 260px; overflow: auto; padding: 2px 0; }
+    .gde-tm-picker-row {
+      padding: 4px 10px; cursor: pointer;
+      font-size: 12px; color: var(--ef-fg-1, #d6d6d9);
+      display: flex; align-items: center; gap: 8px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .gde-tm-picker-row.is-focused,
+    .gde-tm-picker-row:hover {
+      background: color-mix(in srgb, var(--ef-accent, #4a90e2) 18%, transparent);
+      color: var(--ef-fg-0, #f0f0f5);
+    }
+    .gde-tm-picker-type {
+      margin-left: auto;
+      font-size: 10px; color: var(--ef-fg-3, #8a8a90);
+      font-family: ui-monospace, Menlo, monospace;
+    }
+    .gde-tm-picker-hit {
+      background: color-mix(in srgb, var(--ef-accent, #4a90e2) 40%, transparent);
+      color: var(--ef-fg-0, #f0f0f5);
+      border-radius: 2px; padding: 0 1px;
+    }
+    .gde-tm-picker-empty {
+      padding: 12px; text-align: center; font-size: 12px;
+      color: var(--ef-fg-3, #8a8a90);
+    }
+
+    /* 闁冲厜鍋撻柍鍏夊亾 Fix-preview modal body 闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋?*/
+    .gde-tm-fix-preview { min-width: 420px; max-width: 560px; }
+    .gde-tm-fix-summary { font-size: 12px; margin-bottom: 8px; color: var(--ef-fg-1, #d6d6d9); }
+    .gde-tm-fix-list {
+      max-height: 320px; overflow: auto;
+      border: 1px solid var(--ef-border, #3a3a40);
+      border-radius: var(--ef-r-2, 3px);
+      background: var(--ef-bg-2, #242428);
+      font: 11px ui-monospace, Menlo, monospace;
+    }
+    .gde-tm-fix-line {
+      padding: 3px 8px; white-space: nowrap;
+      overflow: hidden; text-overflow: ellipsis;
+      color: var(--ef-fg-1, #d6d6d9);
+      display: flex; align-items: center; gap: 6px;
+    }
+    .gde-tm-fix-line:nth-child(even) { background: var(--ef-bg-1, #1a1a1f); }
+    .gde-tm-fix-badge {
+      display: inline-block; min-width: 40px;
+      text-align: center; font-size: 10px; font-weight: 600;
+      padding: 1px 5px; border-radius: 2px;
+    }
+    .gde-tm-fix-set    { background: color-mix(in srgb, var(--ef-warn, #d4ba6b) 30%, transparent); color: var(--ef-warn, #d4ba6b); }
+    .gde-tm-fix-delete { background: color-mix(in srgb, var(--ef-error, #e07a78) 30%, transparent); color: var(--ef-error, #e07a78); }
+
+    .gde-tm-merge-preview { min-width: 420px; max-width: 560px; display: flex; flex-direction: column; gap: 4px; font-size: 12px; }
+    .gde-tm-merge-line { padding: 4px 8px; border-radius: 3px; background: var(--ef-bg-2, #242428); color: var(--ef-fg-1, #d6d6d9); word-break: break-word; }
+    .gde-tm-merge-skip { opacity: 0.65; }
+
+    /* Renderer bits */
+    .gde-range-wrap { display: flex; align-items: center; gap: 8px; }
+    .gde-range-wrap input[type=range] { flex: 1; }
+    .gde-range-wrap .gde-range-val {
+      width: 58px; text-align: right;
+      font-family: ui-monospace, monospace; font-size: 11px;
+      color: var(--ef-fg-3, #8a8a90);
+    }
+    .gde-color-wrap { display: flex; align-items: center; gap: 6px; }
+    .gde-color-sw {
+      width: 22px; height: 22px; border-radius: 3px;
+      border: 1px solid var(--ef-border, #3a3a40);
+      cursor: pointer; flex-shrink: 0;
+      background-image:
+        linear-gradient(45deg, #444 25%, transparent 25%),
+        linear-gradient(-45deg, #444 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #444 75%),
+        linear-gradient(-45deg, transparent 75%, #444 75%);
+      background-size: 8px 8px;
+      background-position: 0 0, 0 4px, 4px -4px, -4px 0;
+    }
+    .gde-color-sw input { opacity: 0; width: 0; height: 0; pointer-events: none; position: absolute; }
+    .gde-bool-toggle {
+      display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+    }
+    .gde-bool-dot {
+      width: 28px; height: 16px; border-radius: 999px;
+      background: var(--ef-border, #3a3a40); position: relative;
+      transition: background 120ms;
+    }
+    .gde-bool-dot::after {
+      content: ''; position: absolute; top: 2px; left: 2px;
+      width: 12px; height: 12px; border-radius: 50%;
+      background: white; transition: left 120ms;
+    }
+    .gde-bool-toggle.is-on .gde-bool-dot { background: var(--ef-accent, #4a90e2); }
+    .gde-bool-toggle.is-on .gde-bool-dot::after { left: 14px; }
+    .gde-bool-label { font-size: 11px; color: var(--ef-fg-3, #8a8a90); }
+
+    .gde-struct-box, .gde-array-box {
+      border: 1px solid var(--ef-border, #3a3a40);
+      border-radius: var(--ef-r-2, 4px); padding: 6px 8px;
+      background: var(--ef-bg-0, rgba(0,0,0,0.15));
+    }
+    .gde-struct-summary, .gde-array-summary {
+      font-family: ui-monospace, monospace; font-size: 11px;
+      color: var(--ef-fg-3, #8a8a90);
+      cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .gde-struct-summary:hover, .gde-array-summary:hover { color: var(--ef-fg-1, #d6d6d9); }
+    .gde-struct-fields { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; }
+    .gde-sub-row { display: grid; grid-template-columns: 70px 1fr auto; gap: 6px; align-items: center; }
+    .gde-sub-row .gde-sub-label { font-size: 11px; color: var(--ef-fg-3, #8a8a90); }
+    .gde-array-items { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; }
+    .gde-array-add {
+      font-size: 11px; padding: 2px 8px; margin-top: 4px;
+      background: transparent; border: 1px dashed var(--ef-border, #3a3a40);
+      color: var(--ef-fg-3, #8a8a90);
+      border-radius: 3px; cursor: pointer; width: 100%;
+    }
+    .gde-array-add:hover { border-color: var(--ef-accent, #4a90e2); color: var(--ef-accent, #4a90e2); }
+    .gde-icon-btn {
+      background: transparent; border: 0; color: var(--ef-fg-3, #8a8a90);
+      cursor: pointer; padding: 2px 6px; border-radius: 3px; font-size: 12px;
+    }
+    .gde-icon-btn:hover { background: var(--ef-hover, rgba(255,255,255,0.06)); color: var(--ef-fg-1, #d6d6d9); }
+
+    .gde-img-pick {
+      display: flex; align-items: center; gap: 6px;
+      padding: 2px; border-radius: 3px;
+      border: 1px solid var(--ef-border, #3a3a40);
+      background: var(--ef-bg-0, #1e1e22);
+    }
+    .gde-img-preview {
+      width: 28px; height: 28px; border-radius: 3px; flex-shrink: 0;
+      background: repeating-linear-gradient(45deg, #2a2a30, #2a2a30 3px, #32323a 3px, #32323a 6px);
+      display: flex; align-items: center; justify-content: center;
+      overflow: hidden; font-size: 9px; color: #555;
+    }
+    .gde-img-preview img { width: 100%; height: 100%; object-fit: cover; }
+    .gde-img-path {
+      flex: 1; min-width: 0; background: transparent; border: 0; outline: none;
+      color: var(--ef-fg-1, #d6d6d9); font-family: ui-monospace, monospace;
+      font-size: 11px; padding: 4px 0;
+    }
+
+    /* Sidebar list toolbar 闁?shared by TableMap + TypeConfig panels. */
+    .gde-tablemap { padding: 6px; }
+    .gde-tm-toolbar {
+      display: flex; align-items: center; gap: 4px;
+      padding: 6px 4px; margin-bottom: 4px;
+      border-bottom: 1px solid var(--ef-border, #3a3a40);
+    }
+    .gde-tm-toolbar > .ef-ui-field { flex: 1 1 auto; min-width: 0; }
+    .gde-tm-toolbar > .ef-ui-icon-btn { flex: 0 0 auto; }
+    /* Merged Tables panel 闁?entity count badge on table rows */
+    .gde-tables { padding: 6px; }
+    .gde-tables .gde-tm-toolbar { margin-bottom: 4px; }
+    .gde-tables .ef-ui-tree-row-active,
+    .gde-tables .ef-ui-tree-row-active:hover {
+      background: color-mix(in srgb, var(--ef-accent, #4a90e2) 24%, transparent);
+      color: var(--ef-fg-0, #f0f0f0);
+      box-shadow: inset 2px 0 0 var(--ef-accent, #4a90e2), inset 0 0 0 1px color-mix(in srgb, var(--ef-accent, #4a90e2) 34%, transparent);
+    }
+    .gde-tables .ef-ui-tree-row-active:hover {
+      background: color-mix(in srgb, var(--ef-accent, #4a90e2) 30%, transparent);
+    }
+    .gde-tables .ef-ui-tree-row-active .ef-ui-tree-leading,
+    .gde-tables .ef-ui-tree-row-active .ef-ui-tree-icon {
+      color: var(--ef-accent-soft, #7fb5ff);
+    }
+    .gde-tbl-count {
+      display: inline-block; min-width: 18px;
+      padding: 0 5px; height: 16px; line-height: 16px;
+      border-radius: 8px;
+      background: var(--ef-bg-3, #333);
+      color: var(--ef-fg-3, #888);
+      font-size: 10px; font-weight: 500; text-align: center;
+    }
+    .ef-ui-tree-row-active .gde-tbl-count {
+      background: color-mix(in srgb, var(--ef-accent) 25%, transparent);
+      color: var(--ef-fg-0);
+    }
+    .gde-tm-item {
+      display: flex; align-items: center; gap: 6px;
+      padding: 5px 8px; border-radius: 3px;
+      cursor: pointer; color: var(--ef-fg-1, #d6d6d9);
+      font-size: 12px; user-select: none;
+    }
+    .gde-tm-item:hover { background: var(--ef-hover, rgba(255,255,255,0.05)); }
+    .gde-tm-item.is-active { background: rgba(74,144,226,0.18); color: var(--ef-accent, #4a90e2); }
+    .gde-tm-item .gde-tm-icon { font-size: 13px; opacity: .7; }
+    .gde-tm-item .gde-tm-count {
+      margin-left: auto; font-size: 10px; font-family: ui-monospace, monospace;
+      color: var(--ef-fg-3, #8a8a90);
+    }
+
+    /* Generic toolbar */
+    .gde-panel-toolbar {
+      display: flex; align-items: center; gap: 6px;
+      padding: 6px 8px; min-height: 32px;
+      border-bottom: 1px solid var(--ef-border, #3a3a40);
+      background: var(--ef-bg-1, #26262b);
+      color: var(--ef-fg-1, #d6d6d9);
+      font-size: 12px;
+    }
+    .gde-panel-toolbar button {
+      background: transparent;
+      border: 1px solid var(--ef-border, #3a3a40);
+      color: var(--ef-fg-1, #d6d6d9);
+      padding: 3px 10px; font-size: 12px;
+      border-radius: 3px; cursor: pointer;
+    }
+    .gde-panel-toolbar button:hover {
+      border-color: var(--ef-accent, #4a90e2);
+      color: var(--ef-accent, #4a90e2);
+    }
+    .gde-panel-toolbar button.is-primary {
+      background: var(--ef-accent, #4a90e2);
+      border-color: var(--ef-accent, #4a90e2);
+      color: white;
+    }
+    .gde-panel-toolbar button.is-primary:hover { color: white; filter: brightness(1.1); }
+    .gde-panel-toolbar button.is-danger {
+      color: #e06c75; border-color: #e06c75;
+    }
+    .gde-panel-toolbar .gde-mode-seg {
+      display: inline-flex; border: 1px solid var(--ef-border, #3a3a40);
+      border-radius: 3px; overflow: hidden;
+    }
+    .gde-panel-toolbar .gde-mode-seg button {
+      border: 0; border-radius: 0; padding: 3px 10px;
+    }
+    .gde-panel-toolbar .gde-mode-seg button.is-on {
+      background: var(--ef-accent, #4a90e2); color: white;
+    }
+    .gde-panel-toolbar .gde-spacer { flex: 1; }
+    .gde-panel-toolbar select {
+      background: var(--ef-bg-0, #1e1e22);
+      border: 1px solid var(--ef-border, #3a3a40);
+      color: var(--ef-fg-1, #d6d6d9);
+      border-radius: 3px; padding: 3px 6px; font-size: 12px;
+    }
+    .gde-panel-toolbar input[type=range] { width: 110px; }
+    .gde-panel-toolbar .gde-hint {
+      font-size: 11px; color: var(--ef-fg-3, #8a8a90);
+    }
+
+    /* Asset panel */
+    .gde-assets {
+      height: 100%; display: flex; flex-direction: column;
+      background: var(--ef-bg-1, #26262b); color: var(--ef-fg-1, #d6d6d9);
+      font-size: 12px;
+    }
+    .gde-assets-toolbar {
+      display: flex; align-items: center; gap: 6px;
+      padding: 6px 8px; border-bottom: 1px solid var(--ef-border, #3a3a40);
+      background: var(--ef-bg-1, #26262b);
+    }
+    .gde-assets-toolbar input {
+      width: 240px; max-width: 40%;
+      background: var(--ef-bg-0, #1e1e22);
+      border: 1px solid var(--ef-border, #3a3a40);
+      color: var(--ef-fg-1, #d6d6d9);
+      border-radius: 3px; padding: 4px 8px; outline: none;
+    }
+    .gde-assets-btn {
+      display: inline-flex; align-items: center; gap: 4px;
+      height: 24px; padding: 0 8px;
+      border: 1px solid var(--ef-border, #3a3a40);
+      border-radius: 3px; background: var(--ef-bg-2, #202024);
+      color: var(--ef-fg-1, #d6d6d9); cursor: pointer; font-size: 12px;
+    }
+    .gde-assets-btn:hover { border-color: var(--ef-accent); color: var(--ef-accent); }
+    .gde-assets-crumb {
+      display: flex; align-items: center; gap: 4px;
+      min-height: 28px; padding: 0 10px;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      color: var(--ef-fg-3, #8a8a90);
+    }
+    .gde-assets-crumb button {
+      border: 0; background: transparent; color: var(--ef-fg-1);
+      cursor: pointer; padding: 2px 4px; border-radius: 3px;
+    }
+    .gde-assets-crumb button:hover { background: var(--ef-hover, rgba(255,255,255,.05)); }
+    .gde-assets-grid {
+      position: relative; flex: 1; overflow: auto;
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+      align-content: start; gap: 8px; padding: 10px;
+    }
+    .gde-asset-tile {
+      min-width: 0; height: 92px; padding: 6px;
+      display: flex; flex-direction: column; align-items: center; gap: 6px;
+      border: 1px solid transparent; border-radius: 5px;
+      cursor: default; user-select: none;
+    }
+    .gde-asset-tile:hover { background: var(--ef-hover, rgba(255,255,255,.05)); }
+    .gde-asset-tile.is-selected {
+      background: color-mix(in srgb, var(--ef-accent) 22%, transparent);
+      border-color: var(--ef-accent);
+    }
+    .gde-asset-thumb {
+      width: 52px; height: 52px; display: flex; align-items: center; justify-content: center;
+      border-radius: 5px; background: var(--ef-bg-0, #1e1e22);
+      overflow: hidden; color: var(--ef-fg-3);
+    }
+    .gde-asset-thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .gde-asset-name {
+      width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      text-align: center; font-size: 11px;
+    }
+    .gde-assets-empty {
+      grid-column: 1 / -1; padding: 24px; text-align: center;
+      color: var(--ef-fg-3, #8a8a90); font-style: italic;
+    }
+
+    /* Log panel */
+    .gde-log { padding: 0; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; }
+    .gde-log-list { overflow: auto; height: 100%; }
+    .gde-log-row {
+      display: grid; grid-template-columns: 60px 70px 1fr;
+      gap: 8px; padding: 3px 10px;
+      border-bottom: 1px solid rgba(255,255,255,0.03);
+      color: var(--ef-fg-1, #d6d6d9); cursor: pointer;
+    }
+    .gde-log-row:hover { background: var(--ef-hover, rgba(255,255,255,0.04)); }
+    .gde-log-row .gde-log-time { color: var(--ef-fg-3, #6a6a70); }
+    .gde-log-row.lv-info .gde-log-lv { color: #7ab8ff; }
+    .gde-log-row.lv-warn .gde-log-lv { color: #e5c07b; }
+    .gde-log-row.lv-warn { background: rgba(229, 192, 123, 0.06); }
+    .gde-log-row.lv-error .gde-log-lv { color: #e06c75; }
+    .gde-log-row.lv-error { background: rgba(224, 108, 117, 0.08); }
+    .gde-log-filter {
+      display: flex; gap: 6px; padding: 6px 8px;
+      border-bottom: 1px solid var(--ef-border, #3a3a40);
+      background: var(--ef-bg-1, #26262b);
+    }
+    .gde-log-filter .gde-filter-btn {
+      padding: 2px 10px; border-radius: 3px;
+      border: 1px solid var(--ef-border, #3a3a40);
+      background: transparent; color: var(--ef-fg-1, #d6d6d9);
+      font-size: 11px; cursor: pointer;
+    }
+    .gde-log-filter .gde-filter-btn.is-on { background: var(--ef-accent, #4a90e2); border-color: transparent; color: white; }
+    .gde-log-filter input {
+      flex: 1; background: var(--ef-bg-0, #1e1e22);
+      border: 1px solid var(--ef-border, #3a3a40);
+      color: var(--ef-fg-1, #d6d6d9); border-radius: 3px;
+      padding: 3px 8px; font-size: 12px; outline: none;
+    }
+
+    /* TypeConfig panel */
+    .gde-tc-item {
+      position: relative;
+      display: flex; align-items: center;
+      padding: 5px 8px 5px 10px;
+      border-bottom: 1px solid rgba(255,255,255,0.03);
+      cursor: pointer; color: var(--ef-fg-1, #d6d6d9); font-size: 12px;
+    }
+    .gde-tc-item:hover { background: var(--ef-hover, rgba(255,255,255,0.04)); }
+    .gde-tc-item.is-active {
+      background: color-mix(in srgb, var(--ef-accent) 15%, transparent);
+      color: var(--ef-fg-0);
+    }
+    .gde-tc-item.is-active::before {
+      content: ''; position: absolute;
+      left: 0; top: 4px; bottom: 4px; width: 2px;
+      background: var(--ef-accent); border-radius: 0 2px 2px 0;
+    }
+    .gde-tc-item .gde-tc-name { display: flex; align-items: center; gap: 6px; min-width: 0; white-space: nowrap; overflow: hidden; }
+    .gde-tc-item .gde-tc-key { flex: 0 0 auto; font-weight: 600; }
+    .gde-tc-item .gde-tc-desc {
+      min-width: 0; overflow: hidden; text-overflow: ellipsis;
+      font-size: 11px; font-weight: 400; color: var(--ef-fg-3, #8a8a90);
+    }
+    .gde-tc-item .gde-tc-badge {
+      flex: 0 0 auto; display: inline-block; margin-left: 0; padding: 1px 5px;
+      border-radius: 2px; font-size: 10px; font-weight: 600;
+      background: rgba(74,144,226,0.2); color: var(--ef-accent, #4a90e2);
+    }
+    /* Section headers 闁?clickable to collapse */
+    .gde-tc-section-head {
+      display: flex; align-items: center; gap: 4px;
+      padding: 6px 10px;
+      font-size: 10px; font-weight: 600; text-transform: uppercase;
+      color: var(--ef-fg-3, #8a8a90);
+      background: color-mix(in srgb, var(--ef-bg-0) 50%, transparent);
+      border-bottom: 1px solid var(--ef-border, #3a3a40);
+      cursor: pointer;
+      user-select: none;
+    }
+    .gde-tc-section-head:hover { color: var(--ef-fg-1); }
+    .gde-tc-section-caret {
+      width: 10px; display: inline-block;
+      transition: transform var(--ef-dur-fast) var(--ef-ease);
+    }
+    .gde-tc-section-head.is-collapsed .gde-tc-section-caret { transform: rotate(-90deg); }
+    .gde-tc-section-body.is-collapsed { display: none; }
+
+    /* Search panel */
+    .gde-search-input {
+      width: 100%; box-sizing: border-box;
+      background: var(--ef-bg-0, #1e1e22);
+      border: 1px solid var(--ef-border, #3a3a40);
+      color: var(--ef-fg-1, #d6d6d9); border-radius: 3px;
+      padding: 6px 10px; font-size: 12px; outline: none;
+      margin-bottom: 8px;
+    }
+    .gde-search-input:focus { border-color: var(--ef-accent, #4a90e2); }
+    .gde-search-result {
+      padding: 6px 8px; font-size: 12px;
+      border-bottom: 1px solid rgba(255,255,255,0.03); cursor: pointer;
+      color: var(--ef-fg-1, #d6d6d9);
+    }
+    .gde-search-result:hover { background: var(--ef-hover, rgba(255,255,255,0.04)); }
+    .gde-search-result .gde-sr-path {
+      font-family: ui-monospace, monospace; font-size: 10px;
+      color: var(--ef-fg-3, #8a8a90);
+    }
+    .gde-search-result .gde-sr-match { color: var(--ef-accent, #4a90e2); }
+
+    /* Context menu */
+    .gde-ctx-menu {
+      position: fixed; z-index: 10000;
+      background: var(--ef-bg-1, #26262b);
+      border: 1px solid var(--ef-border, #3a3a40);
+      border-radius: var(--ef-r-2, 4px);
+      box-shadow: 0 8px 24px rgba(0,0,0,.5);
+      padding: 4px; min-width: 160px;
+    }
+    .gde-ctx-item {
+      padding: 5px 12px; font-size: 12px;
+      color: var(--ef-fg-1, #d6d6d9); cursor: pointer;
+      border-radius: 3px;
+    }
+    .gde-ctx-item:hover { background: var(--ef-accent, #4a90e2); color: white; }
+    .gde-ctx-item.is-danger { color: #e06c75; }
+    .gde-ctx-sep { height: 1px; background: var(--ef-border, #3a3a40); margin: 4px 0; }
+
+    /* Modal form */
+    .gde-form { display: flex; flex-direction: column; gap: 10px; padding: 14px; min-width: 360px; }
+    .gde-form-row { display: grid; grid-template-columns: 100px 1fr; gap: 8px; align-items: center; }
+    .gde-form-row label { font-size: 12px; color: var(--ef-fg-3, #8a8a90); }
+    .gde-form input, .gde-form select, .gde-form textarea {
+      background: var(--ef-bg-0, #1e1e22);
+      border: 1px solid var(--ef-border, #3a3a40);
+      color: var(--ef-fg-1, #d6d6d9); border-radius: 3px;
+      padding: 5px 8px; font-size: 12px; outline: none;
+      font-family: inherit;
+    }
+    .gde-form textarea { min-height: 80px; resize: vertical; }
+    .gde-form-foot {
+      display: flex; justify-content: flex-end; gap: 8px;
+      padding-top: 8px; border-top: 1px solid var(--ef-border, #3a3a40);
+    }
+    .gde-form-foot button {
+      background: transparent; border: 1px solid var(--ef-border, #3a3a40);
+      color: var(--ef-fg-1, #d6d6d9);
+      padding: 4px 14px; border-radius: 3px; font-size: 12px; cursor: pointer;
+    }
+    .gde-form-foot button.is-primary {
+      background: var(--ef-accent, #4a90e2);
+      border-color: var(--ef-accent, #4a90e2); color: white;
+    }
+
+    /* TypeConfig editor form */
+    .gde-tc-editor {
+      display: flex; flex-direction: column; gap: 10px;
+      padding: 14px; min-width: 460px; max-width: 520px;
+    }
+    .gde-tc-editor textarea {
+      background: var(--ef-bg-0, #1e1e22);
+      border: 1px solid var(--ef-border, #3a3a40);
+      color: var(--ef-fg-1, #d6d6d9); border-radius: 3px;
+      padding: 8px; font-size: 12px; outline: none;
+      font-family: ui-monospace, monospace; min-height: 160px;
+    }
+
+    /* Small scrollbars */
+    *::-webkit-scrollbar { width: 10px; height: 10px; }
+    *::-webkit-scrollbar-track { background: transparent; }
+    *::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 5px; }
+    *::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.16); }
+
+    /* 闁冲厜鍋撻柍鍏夊亾 CardStyle list panel 闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋?*/
+    .gde-cs-list { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+    .gde-cs-list-bar {
+      display: flex; padding: 6px 8px;
+      border-bottom: 1px solid var(--ef-border);
+    }
+    .gde-cs-list-grid {
+      flex: 1 1 auto; overflow: auto;
+      display: flex; flex-wrap: wrap; gap: 8px;
+      padding: 8px;
+      align-content: flex-start;
+    }
+    .gde-cs-tile {
+      width: 88px; cursor: pointer; user-select: none;
+      border: 1px solid var(--ef-border);
+      border-radius: var(--ef-r-2);
+      background: var(--ef-bg-1);
+      overflow: hidden;
+      display: flex; flex-direction: column;
+    }
+    .gde-cs-tile.is-active { border-color: var(--ef-accent); box-shadow: 0 0 0 1px var(--ef-accent); }
+    .gde-cs-tile-preview {
+      height: 78px; padding: 4px;
+      display: flex; align-items: center; justify-content: center;
+      overflow: hidden;
+    }
+    .gde-cs-preview-holder {
+      position: relative;
+      flex: 0 0 auto;
+      overflow: hidden;
+    }
+    .gde-cs-tile-name {
+      padding: 4px 6px;
+      font: var(--ef-fs-xs) var(--ef-font-ui);
+      color: var(--ef-fg-1);
+      text-align: center;
+      border-top: 1px solid var(--ef-border);
+      background: var(--ef-bg-2);
+      white-space: nowrap; text-overflow: ellipsis; overflow: hidden;
+    }
+
+    /* 闁冲厜鍋撻柍鍏夊亾 CardStyle node tree panel 闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋?*/
+    .gde-cs-tree { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+    .gde-cs-tree-header {
+      padding: 6px 10px;
+      border-bottom: 1px solid var(--ef-border);
+      font: 600 var(--ef-fs-sm) var(--ef-font-ui);
+      color: var(--ef-fg-1);
+    }
+    .gde-cs-tree-bar {
+      display: flex; align-items: center; gap: 6px;
+      padding: 6px 8px;
+      border-bottom: 1px solid var(--ef-border);
+    }
+    .gde-cs-tree-empty {
+      padding: 16px;
+      font: var(--ef-fs-sm) var(--ef-font-ui);
+      color: var(--ef-fg-3);
+      text-align: center; line-height: 1.5;
+    }
+
+    /* 闁冲厜鍋撻柍鍏夊亾 CardStyle palette panel 闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋?*/
+    .gde-palette { padding: 6px; overflow: auto; height: 100%; }
+    .gde-palette-section { margin-bottom: 8px; }
+    .gde-palette-cat {
+      font: 600 10px var(--ef-font-ui);
+      letter-spacing: 0.06em; text-transform: uppercase;
+      color: var(--ef-fg-3);
+      padding: 4px 4px;
+    }
+    .gde-palette-grid { display: flex; flex-wrap: wrap; gap: 4px; }
+    .gde-palette-chip {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 4px 8px;
+      border: 1px solid var(--ef-border);
+      border-radius: var(--ef-r-2);
+      background: var(--ef-bg-2);
+      font: var(--ef-fs-sm) var(--ef-font-ui);
+      color: var(--ef-fg-1);
+      cursor: grab;
+      user-select: none;
+    }
+    .gde-palette-chip:hover { background: var(--ef-hover); border-color: var(--ef-border-strong); }
+    .gde-palette-chip:active { cursor: grabbing; }
+
+    /* 闁冲厜鍋撻柍鍏夊亾 CardStyle editor panel 闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾 */
+    .gde-cs-editor { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+    .gde-cs-editor-bar {
+      display: flex; align-items: center; gap: 12px;
+      padding: 6px 10px;
+      border-bottom: 1px solid var(--ef-border);
+      background: var(--ef-bg-2);
+    }
+    .gde-cs-editor-name {
+      font: 600 var(--ef-fs-md) var(--ef-font-ui);
+      color: var(--ef-fg-0);
+    }
+    .gde-cs-editor-size {
+      font: var(--ef-fs-xs) var(--ef-font-ui);
+      color: var(--ef-fg-3);
+    }
+    .gde-cs-editor-zoom {
+      margin-left: auto;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .gde-cs-editor-zoom-label {
+      font: var(--ef-fs-xs) var(--ef-font-ui);
+      color: var(--ef-fg-3);
+    }
+    .gde-cs-editor-zoom .ef-ui-num { width: 100px; }
+    .gde-cs-stage {
+      position: relative;
+      flex: 1 1 auto; overflow: auto;
+      background:
+        repeating-conic-gradient(var(--ef-bg-1) 0% 25%, var(--ef-bg-2) 0% 50%) 0 0/16px 16px;
+      display: flex; align-items: center; justify-content: center;
+      padding: 32px;
+    }
+    .gde-cs-canvas {
+      box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+      outline: 1px solid var(--ef-border);
+    }
+    .gde-cs-canvas-empty {
+      width: 200px; height: 120px;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--ef-bg-2);
+      border: 2px dashed var(--ef-border);
+      border-radius: 4px;
+      color: var(--ef-fg-3);
+      font: var(--ef-fs-sm) var(--ef-font-ui);
+      text-align: center; padding: 12px;
+    }
+    .gde-cs-canvas [data-node-id].is-selected-node {
+      outline: 2px solid var(--ef-accent);
+      outline-offset: 2px;
+    }
+    /* In the editor we want resize handles + selection rings to escape
+       the cardStyle's clipping, so children dragged near edges still
+       expose their handles. The card preview in the table grid keeps
+       the runtime overflow:hidden via the .gde-card outer. */
+    .gde-cs-canvas .ef-ui-absolute { overflow: visible; }
+    /* Resize-handle overlay 闁?hollow circles centered exactly on the
+       slot's edges/corners. Each handle anchors to its named edge/corner
+       (top/bottom/left/right = 0) and uses translate(閸?0%) to put its
+       own center on that anchor 闁?pixel-perfect without depending on
+       the handle's own size, which is the trick mature editors use. */
+    .ef-ui-abs-slot:has(.gde-cs-handles) { cursor: move; }
+    /* Wrapper extends 3px outside slot edges so handle centers land on the
+       selection ring's center line (ring = 2px outline + 2px offset 闁?its
+       midline sits 3px outward from the slot edge). */
+    .gde-cs-handles {
+      position: absolute; inset: -3px; pointer-events: none;
+      z-index: 2;
+    }
+    .gde-cs-handle {
+      position: absolute; width: 12px; height: 12px;
+      background: #fff;
+      border: 2px solid var(--ef-accent);
+      border-radius: 50%;
+      box-sizing: border-box;
+      box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4);
+      pointer-events: auto;
+    }
+    .gde-cs-handle-n  { top: 0;    left: 50%;  transform: translate(-50%, -50%); cursor: ns-resize; }
+    .gde-cs-handle-s  { bottom: 0; left: 50%;  transform: translate(-50%,  50%); cursor: ns-resize; }
+    .gde-cs-handle-e  { top: 50%;  right: 0;   transform: translate( 50%, -50%); cursor: ew-resize; }
+    .gde-cs-handle-w  { top: 50%;  left: 0;    transform: translate(-50%, -50%); cursor: ew-resize; }
+    .gde-cs-handle-nw { top: 0;    left: 0;    transform: translate(-50%, -50%); cursor: nwse-resize; }
+    .gde-cs-handle-ne { top: 0;    right: 0;   transform: translate( 50%, -50%); cursor: nesw-resize; }
+    .gde-cs-handle-sw { bottom: 0; left: 0;    transform: translate(-50%,  50%); cursor: nesw-resize; }
+    .gde-cs-handle-se { bottom: 0; right: 0;   transform: translate( 50%,  50%); cursor: nwse-resize; }
+    .gde-cs-marquee {
+      position: absolute;
+      z-index: 4;
+      border: 1px solid var(--ef-accent);
+      background: color-mix(in srgb, var(--ef-accent) 18%, transparent);
+      pointer-events: none;
+      box-sizing: border-box;
+    }
+
+    /* 闁冲厜鍋撻柍鍏夊亾 CardStyle inspector form 闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋撻柍鍏夊亾闁冲厜鍋?*/
+    .gde-cs-bindings-head {
+      margin-top: 12px;
+      padding: 4px 8px;
+      font: 600 11px var(--ef-font-ui);
+      letter-spacing: 0.06em; text-transform: uppercase;
+      color: var(--ef-fg-3);
+      border-top: 1px solid var(--ef-border);
+    }
+    .gde-cs-bindings { display: flex; flex-direction: column; gap: 4px; padding: 4px 8px; }
+    .gde-cs-layout   { padding: 4px 8px 8px; }
+    .gde-cs-binding-row { display: flex; align-items: center; gap: 8px; }
+    .gde-cs-binding-key {
+      flex: 0 0 90px;
+      font: var(--ef-fs-sm) var(--ef-font-ui);
+      color: var(--ef-fg-2);
+    }
+    .gde-cs-binding-row .ef-ui-field { flex: 1 1 auto; }
+  </style>
+  <link rel="stylesheet" href="src/app.css?v=50" />
+</head>
+<body>
+  <div class="gde-topbar" id="gde-topbar"></div>
+  <div class="gde-body"><div id="app"></div></div>
+
+  <script src="vendor/ef.js?v=58"></script>
+  <script src="vendor/fflate.min.js?v=49"></script>
+
+  <!-- i18n (must load before everything else) -->
+  <script src="src/i18n.js?v=49"></script>
+
+  <!-- Core data model & utilities -->
+  <script src="src/state.js?v=52"></script>
+  <script src="src/scene-node.js?v=49"></script>
+  <script src="src/scene-dom.js?v=49"></script>
+  <script src="src/scene-selection.js?v=49"></script>
+  <script src="src/cardstyle-actions.js?v=59"></script>
+  <script src="src/scene-align.js?v=49"></script>
+  <script src="src/normalize.js?v=49"></script>
+  <script src="src/renderers.js?v=49"></script>
+  <script src="src/app-utils.js?v=52"></script>
+  <script src="src/loading.js?v=50"></script>
+  <script src="src/clipboard.js?v=52"></script>
+  <script src="src/card.js?v=52"></script>
+
+  <!-- Project IO: folder workspace + zip fallback. -->
+  <script src="src/project-io/codec.js?v=55"></script>
+  <script src="src/project-io/assets.js?v=50"></script>
+  <script src="src/history.js?v=49"></script>
+  <script src="src/project-io/fs-workspace.js?v=50"></script>
+  <script src="src/project-io/zip-workspace.js?v=50"></script>
+  <script src="src/project-io/recent.js?v=49"></script>
+
+  <!-- Panels (one file per panel). Tab bars / panel rails / log header
+       are delegated to the framework's built-in tab components (tab-standard
+       / tab-sidebar / tab-collapsible) 闁?no per-project tab component. -->
+  <script src="src/panels/tables.js?v=53"></script>
+  <script src="src/panels/search.js?v=49"></script>
+  <script src="src/panels/assets.js?v=49"></script>
+  <script src="src/panels/inspector.js?v=55"></script>
+  <script src="src/panels/typeconfig.js?v=55"></script>
+  <!-- log panel deleted: using the framework's built-in 'log' component -->
+  <script src="src/panels/tabledata.js?v=56"></script>
+  <script src="src/panels/cardstyle-list.js?v=49"></script>
+  <script src="src/panels/history.js?v=49"></script>
+  <script src="src/panels/cardstyle-tree.js?v=59"></script>
+  <script src="src/panels/cardstyle-snapping.js?v=49"></script>
+  <script src="src/panels/cardstyle-editor.js?v=61"></script>
+  <script src="src/panels/toolbar.js?v=50"></script>
+
+  <!-- Seed demo data & mount -->
+  <script src="src/seed.js?v=61"></script>
+  <script src="src/main.js?v=56"></script>
+</body>
+</html>
+
+
+

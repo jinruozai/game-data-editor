@@ -1,0 +1,552 @@
+/* GameDataEditor visual chrome.
+ * Application-level roles sit on top of EF theme tokens. The editor should
+ * read as: shell -> dock toolbar -> panel chrome -> content well -> item.
+ */
+
+:root {
+  --gde-shell-bg: color-mix(in srgb, var(--ef-bg-0) 72%, var(--ef-bg-1));
+  --gde-dock-toolbar-bg: color-mix(in srgb, var(--ef-bg-raised) 78%, var(--ef-bg-0));
+  --gde-panel-bg: var(--ef-bg-1);
+  --gde-panel-chrome-bg: color-mix(in srgb, var(--ef-bg-0) 58%, var(--ef-bg-1));
+  --gde-panel-chrome-hover: color-mix(in srgb, var(--ef-bg-3) 70%, var(--ef-bg-1));
+  --gde-content-bg: color-mix(in srgb, var(--ef-bg-1) 80%, var(--ef-bg-0));
+  --gde-well-bg: var(--ef-bg-2);
+  --gde-item-bg: color-mix(in srgb, var(--ef-bg-raised) 72%, var(--ef-bg-1));
+  --gde-line: color-mix(in srgb, var(--ef-border-strong) 72%, transparent);
+  --gde-line-soft: color-mix(in srgb, var(--ef-border) 62%, transparent);
+}
+
+html,
+body {
+  background: var(--gde-shell-bg);
+}
+
+.gde-topbar {
+  background: var(--gde-shell-bg);
+  border-bottom-color: var(--gde-line);
+  box-shadow: inset 0 -1px 0 color-mix(in srgb, #000 24%, transparent);
+}
+.gde-topbar .gde-brand {
+  color: var(--ef-fg-0);
+}
+.gde-topbar .gde-status {
+  opacity: .84;
+}
+
+.ef-dock {
+  background: var(--gde-panel-bg);
+  border-color: var(--gde-line-soft);
+}
+.ef-dock-content {
+  background: var(--gde-panel-bg);
+}
+.ef-toolbar {
+  background: var(--gde-dock-toolbar-bg);
+}
+.ef-toolbar-top {
+  border-bottom-color: var(--gde-line);
+}
+.ef-toolbar-bottom {
+  border-top-color: var(--gde-line);
+}
+.ef-toolbar-left {
+  border-right-color: var(--gde-line);
+}
+.ef-ui-tab-btn-active {
+  background: var(--gde-panel-bg);
+}
+
+.gde-panelstrip,
+.gde-logbar {
+  background: var(--gde-shell-bg);
+}
+.gde-panelstrip-btn.is-active {
+  background: var(--gde-dock-toolbar-bg);
+}
+
+.gde-tables,
+.gde-inspector,
+.gde-cs-tree,
+.gde-cs-list,
+.gde-cs-editor,
+.gde-assets {
+  background: var(--gde-panel-bg);
+}
+
+.gde-panel-toolbar,
+.gde-assets-toolbar,
+.gde-tm-toolbar,
+.gde-cs-list-bar,
+.gde-cs-tree-header,
+.gde-cs-tree-bar,
+.gde-cs-editor-bar,
+.gde-log-filter {
+  background: var(--gde-panel-chrome-bg);
+  border-bottom: 1px solid var(--gde-line);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 3%, transparent);
+}
+
+.gde-tm-toolbar {
+  margin: -6px -6px 6px;
+  padding: 8px;
+}
+.gde-cs-tree-header {
+  background: var(--gde-dock-toolbar-bg);
+}
+.gde-assets-crumb {
+  flex: 0 0 auto;
+  align-self: stretch;
+  background: color-mix(in srgb, var(--gde-panel-chrome-bg) 82%, var(--gde-panel-bg));
+  border: 1px solid var(--gde-line-soft);
+  border-radius: var(--ef-r-2);
+  min-height: 0;
+  height: var(--ef-size-h-md);
+  padding: 0 8px;
+  box-sizing: border-box;
+  color: var(--ef-fg-2);
+}
+
+.gde-panel-toolbar button,
+.gde-assets-btn,
+.gde-log-filter .gde-filter-btn,
+.gde-form-foot button {
+  background: var(--gde-item-bg);
+  border-color: var(--gde-line);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 4%, transparent);
+}
+.gde-panel-toolbar button:hover,
+.gde-assets-btn:hover,
+.gde-log-filter .gde-filter-btn:hover,
+.gde-form-foot button:hover {
+  background: var(--gde-panel-chrome-hover);
+  border-color: var(--ef-border-strong);
+  color: var(--ef-fg-0);
+}
+
+.gde-panel-toolbar select,
+.gde-assets-toolbar .ef-ui-field,
+.gde-log-filter input,
+.gde-search-input,
+.gde-form input,
+.gde-form select,
+.gde-form textarea,
+.gde-tc-editor textarea {
+  background: var(--gde-well-bg);
+  border-color: var(--ef-border-input);
+}
+.gde-assets-toolbar {
+  gap: 8px;
+}
+.gde-assets-toolbar .ef-ui-search-field {
+  height: var(--ef-size-h-md);
+  margin-bottom: 0;
+  flex: 1 1 260px;
+  width: auto;
+  max-width: 520px;
+}
+.gde-assets-toolbar .ef-ui-input {
+  width: auto;
+  max-width: none;
+  background: transparent;
+  border: 0;
+  padding: 0;
+}
+.gde-assets-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+.gde-assets-btn {
+  height: var(--ef-size-h-md);
+  white-space: nowrap;
+}
+
+.gde-cards-wrap,
+.gde-assets-grid,
+.gde-cs-list-grid {
+  background: var(--gde-content-bg);
+}
+.gde-cards-wrap {
+  border-top: 1px solid color-mix(in srgb, #000 22%, transparent);
+}
+.gde-assets .gde-assets-grid {
+  border-top: 1px solid color-mix(in srgb, #000 18%, transparent);
+  grid-template-columns: repeat(auto-fill, 72px);
+  justify-content: start;
+  align-items: start;
+  gap: 6px;
+  padding: 8px 10px;
+}
+
+.gde-card {
+  background: var(--gde-item-bg);
+  border: 1px solid color-mix(in srgb, var(--ef-border) 70%, transparent);
+  border-radius: var(--ef-r-3);
+  box-shadow: 0 1px 2px color-mix(in srgb, #000 28%, transparent);
+}
+.gde-card:hover {
+  border-color: var(--ef-border-strong);
+}
+
+.gde-assets .gde-asset-tile {
+  background: transparent;
+  width: 72px;
+  height: 68px;
+  padding: 3px;
+  gap: 3px;
+  box-sizing: border-box;
+}
+.gde-assets .gde-asset-tile:hover {
+  background: color-mix(in srgb, var(--ef-bg-raised) 62%, transparent);
+  border-color: var(--gde-line-soft);
+}
+.gde-assets .gde-asset-tile.is-selected {
+  background: color-mix(in srgb, var(--ef-accent) 18%, var(--gde-item-bg));
+  border-color: var(--ef-accent);
+}
+.gde-assets .gde-asset-thumb {
+  width: 38px;
+  height: 38px;
+  background: var(--gde-well-bg);
+  border: 1px solid var(--gde-line-soft);
+}
+.gde-assets .gde-asset-name {
+  line-height: 16px;
+}
+
+.gde-tc-section-caret {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  transform-origin: 50% 50%;
+  line-height: 1;
+}
+
+.gde-tc-section-head.is-collapsed .gde-tc-section-caret {
+  transform: rotate(-90deg);
+}
+
+.gde-cs-tile {
+  background: var(--gde-item-bg);
+  border-color: var(--gde-line-soft);
+  box-shadow: 0 1px 2px color-mix(in srgb, #000 24%, transparent);
+}
+.gde-cs-tile-preview {
+  background: var(--gde-content-bg);
+}
+.gde-cs-tile-name {
+  background: var(--gde-panel-chrome-bg);
+  border-top-color: var(--gde-line-soft);
+}
+
+.gde-cs-stage {
+  position: relative;
+  background: color-mix(in srgb, var(--ef-bg-1) 88%, var(--ef-bg-0));
+}
+.gde-cs-stage[data-grid] {
+  background:
+    linear-gradient(color-mix(in srgb, #000 10%, transparent), color-mix(in srgb, #000 10%, transparent)),
+    repeating-conic-gradient(var(--ef-bg-1) 0% 25%, var(--ef-bg-2) 0% 50%) 0 0/var(--gde-cs-grid-size, 16px) var(--gde-cs-grid-size, 16px);
+}
+.gde-cs-canvas {
+  position: relative;
+  box-shadow: 0 6px 20px color-mix(in srgb, #000 48%, transparent);
+}
+.gde-cs-editor-zoom {
+  gap: 6px;
+}
+.gde-cs-editor-zoom .gde-cs-toggle.is-on {
+  color: var(--ef-accent);
+  border-color: var(--ef-accent);
+  background: color-mix(in srgb, var(--ef-accent) 18%, var(--ef-bg-2));
+}
+.gde-cs-grid-size {
+  width: 72px;
+  flex: 0 0 auto;
+}
+.gde-cs-editor-zoom .ef-ui-btn.gde-cs-toggle {
+  height: 26px;
+  min-height: 26px;
+  padding: 0 8px;
+}
+.gde-cs-editor-zoom .ef-ui-icon-btn.gde-cs-align-menu-btn {
+  height: 26px;
+  min-height: 26px;
+  width: 30px;
+}
+.gde-cs-guides {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 6;
+}
+.gde-cs-guide {
+  position: absolute;
+  pointer-events: none;
+}
+.gde-cs-guide-x {
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  transform: translateX(-0.5px);
+}
+.gde-cs-guide-y {
+  left: 0;
+  right: 0;
+  height: 1px;
+  transform: translateY(-0.5px);
+}
+.gde-cs-guide.is-parent {
+  background: var(--ef-accent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--ef-accent) 45%, transparent);
+}
+.gde-cs-guide.is-sibling {
+  background: var(--ef-info);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--ef-info) 42%, transparent);
+}
+
+.gde-inspector-header {
+  border-bottom-color: var(--gde-line);
+}
+.gde-inspector .ef-ui-property-section {
+  border-bottom-color: var(--gde-line-soft);
+}
+.gde-inspector .ef-ui-property-section > .ef-ui-section-head {
+  height: 28px;
+  margin: 6px 0 4px;
+  padding-left: 4px;
+  background: var(--gde-panel-chrome-bg);
+  border-top: 1px solid var(--gde-line-soft);
+  border-bottom: 1px solid var(--gde-line-soft);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 3%, transparent);
+}
+.gde-inspector .ef-ui-property-section > .ef-ui-section-head:hover {
+  background: var(--gde-panel-chrome-hover);
+}
+.gde-inspector .ef-ui-property-section > .ef-ui-section-head .ef-ui-section-arrow {
+  margin-right: 2px;
+}
+.gde-tm-field,
+.gde-refid,
+.gde-struct-box,
+.gde-array-box,
+.gde-tm-fix-list,
+.gde-tm-merge-line {
+  background: var(--gde-well-bg);
+  border-color: var(--gde-line);
+}
+.gde-refid {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+}
+.gde-refid-face {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.gde-refid .ef-ui-icon-btn {
+  cursor: default;
+}
+.gde-refid-icon {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+  object-fit: contain;
+  border-radius: var(--ef-r-1);
+}
+.gde-refid-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.gde-refid-picker-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.gde-loading-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, .38);
+  backdrop-filter: blur(2px);
+}
+
+.gde-loading-overlay.is-hiding {
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.gde-loading-panel {
+  width: min(420px, calc(100vw - 48px));
+  padding: 18px 18px 16px;
+  border: 1px solid var(--ef-border);
+  border-radius: var(--ef-r-3);
+  background: var(--ef-bg-1);
+  box-shadow: var(--ef-shadow-3);
+  color: var(--ef-fg-0);
+}
+
+.gde-loading-title {
+  font: 700 var(--ef-fs-lg) var(--ef-font-ui);
+}
+
+.gde-loading-message {
+  min-height: 18px;
+  margin-top: 8px;
+  color: var(--ef-fg-1);
+  font: var(--ef-fs-sm) var(--ef-font-ui);
+}
+
+.gde-loading-track {
+  position: relative;
+  height: 6px;
+  margin-top: 14px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--ef-bg-3);
+}
+
+.gde-loading-bar {
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--ef-accent);
+  transition: width 120ms ease;
+}
+
+.gde-loading-track.is-indeterminate .gde-loading-bar {
+  position: absolute;
+  width: 38%;
+  animation: gde-loading-sweep 1s ease-in-out infinite;
+}
+
+.gde-loading-detail {
+  min-height: 16px;
+  margin-top: 8px;
+  color: var(--ef-fg-3);
+  font: var(--ef-fs-xs) var(--ef-font-mono);
+}
+
+@keyframes gde-loading-sweep {
+  0% { left: -40%; }
+  100% { left: 102%; }
+}
+
+.gde-history {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--gde-panel-bg);
+  color: var(--ef-fg-1);
+}
+.gde-history-bar {
+  height: 34px;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  background: var(--gde-panel-chrome-bg);
+  border-bottom: 1px solid var(--gde-line);
+  box-sizing: border-box;
+}
+.gde-history-title {
+  font: 600 var(--ef-fs-sm) var(--ef-font-ui);
+  color: var(--ef-fg-0);
+}
+.gde-history-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.gde-history-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 6px;
+  background: var(--gde-content-bg);
+}
+.gde-history-empty {
+  padding: 28px 8px;
+  text-align: center;
+  font: var(--ef-fs-sm) var(--ef-font-ui);
+  color: var(--ef-fg-3);
+}
+.gde-history-row {
+  width: 100%;
+  min-height: 30px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border: 1px solid transparent;
+  border-radius: var(--ef-r-2);
+  background: transparent;
+  color: var(--ef-fg-1);
+  text-align: left;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+.gde-history-row:hover {
+  background: var(--gde-panel-chrome-hover);
+  border-color: var(--gde-line-soft);
+}
+.gde-history-row.is-current {
+  background: color-mix(in srgb, var(--ef-accent) 22%, var(--gde-item-bg));
+  border-color: var(--ef-accent);
+  color: var(--ef-fg-0);
+}
+.gde-history-row.is-future {
+  opacity: .58;
+}
+.gde-history-marker {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ef-fg-4);
+  flex: 0 0 auto;
+}
+.gde-history-row.is-current .gde-history-marker {
+  background: var(--ef-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ef-accent) 18%, transparent);
+}
+.gde-history-body {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: baseline;
+  flex: 1 1 auto;
+}
+.gde-history-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 500 var(--ef-fs-sm) var(--ef-font-ui);
+}
+.gde-history-meta {
+  color: var(--ef-fg-3);
+  font: var(--ef-fs-xs) var(--ef-font-mono);
+}
+
+.gde-tc-section-caret,
+.gde-tm-caret {
+  width: 16px;
+  font-size: var(--ef-fs-md);
+  line-height: 1;
+}

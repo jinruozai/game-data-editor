@@ -1,0 +1,290 @@
+{
+  "int": {
+    "name": "整数",
+    "base_type": "int",
+    "type_render": "input_int",
+    "default": 0,
+    "mem": "标准整数类型",
+    "type_agv": {
+      "radix": "dec"
+    },
+    "support_render": [
+      "enum",
+      "range",
+      "toggle",
+      "color",
+      "id",
+      "ref_id"
+    ]
+  },
+  "float": {
+    "name": "小数",
+    "base_type": "float",
+    "type_render": "input_float",
+    "default": 0.0,
+    "mem": "标准浮点数类型",
+    "type_agv": {
+      "decimal_places": 2,
+      "percent": false
+    },
+    "support_render": [
+      "range"
+    ]
+  },
+  "string": {
+    "name": "文本",
+    "base_type": "string",
+    "type_render": "input_string",
+    "default": "",
+    "mem": "标准字符串类型",
+    "support_render": [
+      "img",
+      "snd",
+      "date"
+    ]
+  },
+  "struct": {
+    "name": "结构体",
+    "base_type": "struct",
+    "type_render": "struct",
+    "default": [],
+    "mem": "自定义结构体数据",
+    "support_render": []
+  },
+  "array": {
+    "name": "列表",
+    "base_type": "array",
+    "type_render": "array",
+    "default": [],
+    "mem": "数组列表数据",
+    "support_render": []
+  },
+  "var": {
+    "name": "变量",
+    "base_type": "var",
+    "type_render": "input",
+    "default": null,
+    "mem": "任意类型数据(自动推断)",
+    "support_render": []
+  },
+  "enum_int": {
+    "name": "选项(整型)",
+    "base_type": "int",
+    "type_render": "enum",
+    "default": 0,
+    "mem": "整数枚举选项",
+    "type_agv": {
+      "options": {
+        "0": "选项1",
+        "1": "选项2"
+      }
+    }
+  },
+  "enum_string": {
+    "name": "选项(文本)",
+    "base_type": "string",
+    "type_render": "enum",
+    "default": "",
+    "mem": "文本枚举选项",
+    "type_agv": {
+      "options": {
+        "option1": "选项1",
+        "option2": "选项2"
+      }
+    }
+  },
+  "range_int": {
+    "name": "范围(整型)",
+    "base_type": "int",
+    "type_render": "range",
+    "default": 0,
+    "mem": "带范围限制的整数",
+    "type_agv": {
+      "min": 0,
+      "max": 100
+    }
+  },
+  "range_float": {
+    "name": "范围(小数)",
+    "base_type": "float",
+    "type_render": "range",
+    "default": 0.0,
+    "mem": "带范围限制的浮点数",
+    "type_agv": {
+      "min": 0.0,
+      "max": 1.0
+    }
+  },
+  "id": {
+    "name": "编号",
+    "base_type": "int",
+    "type_render": "id",
+    "default": 0,
+    "mem": "唯一ID标识",
+    "type_agv": {
+      "ref_column": "name"
+    }
+  },
+  "ref_id": {
+    "name": "引用",
+    "base_type": "int",
+    "type_render": "ref_id",
+    "default": 0,
+    "mem": "引用其他表的ID"
+  },
+  "color": {
+    "name": "颜色",
+    "base_type": "int",
+    "type_render": "color",
+    "default": 0,
+    "mem": "颜色选择器"
+  },
+  "img": {
+    "name": "图片",
+    "base_type": "string",
+    "type_render": "img",
+    "default": "",
+    "mem": "图片资源路径",
+    "type_agv": {
+      "suffix": ".png,.jpg,.jpeg,.bmp",
+      "path_mode": "project"
+    }
+  },
+  "snd": {
+    "name": "音频",
+    "base_type": "string",
+    "type_render": "snd",
+    "default": "",
+    "mem": "音频资源路径",
+    "type_agv": {
+      "suffix": ".mp3,.wav,.ogg",
+      "path_mode": "project"
+    }
+  },
+  "date": {
+    "name": "日期",
+    "base_type": "string",
+    "type_render": "date",
+    "default": "",
+    "mem": "日期字符串"
+  },
+  "bool": {
+    "name": "布尔",
+    "base_type": "int",
+    "type_render": "bool",
+    "default": 0,
+    "mem": "布尔开关"
+  },
+  "id_num": {
+    "name": "ID+数量",
+    "base_type": "struct",
+    "type_render": "struct",
+    "default": [
+      0,
+      0
+    ],
+    "mem": "引用ID与数量组合",
+    "struct_def": {
+      "id_num": {
+        "id": "ref_id",
+        "num": "int"
+      }
+    }
+  },
+  "id_string": {
+    "name": "ID+文本",
+    "base_type": "struct",
+    "type_render": "struct",
+    "default": [
+      0,
+      ""
+    ],
+    "mem": "引用ID与文本组合",
+    "struct_def": {
+      "id_string": {
+        "id": "ref_id",
+        "str": "string"
+      }
+    }
+  },
+  "string_num": {
+    "name": "文本+数量",
+    "base_type": "struct",
+    "type_render": "struct",
+    "default": [
+      "",
+      0
+    ],
+    "mem": "文本与数量组合",
+    "struct_def": {
+      "string_num": {
+        "str": "string",
+        "num": "int"
+      }
+    }
+  },
+  "img_num": {
+    "name": "图片+数量",
+    "base_type": "struct",
+    "type_render": "struct",
+    "default": [
+      "",
+      0
+    ],
+    "mem": "图片与数量组合",
+    "struct_def": {
+      "img_num": {
+        "img": "img",
+        "num": "int"
+      }
+    }
+  },
+  "snd_num": {
+    "name": "音频+数量",
+    "base_type": "struct",
+    "type_render": "struct",
+    "default": [
+      "",
+      0
+    ],
+    "mem": "音频与数量组合",
+    "struct_def": {
+      "snd_num": {
+        "snd": "snd",
+        "num": "int"
+      }
+    }
+  },
+  "img_string": {
+    "name": "图片+文本",
+    "base_type": "struct",
+    "type_render": "struct",
+    "default": [
+      "",
+      ""
+    ],
+    "mem": "图片与文本组合",
+    "struct_def": {
+      "img_string": {
+        "img": "img",
+        "str": "string"
+      }
+    }
+  },
+  "snd_string": {
+    "name": "音频+文本",
+    "base_type": "struct",
+    "type_render": "struct",
+    "default": [
+      "",
+      ""
+    ],
+    "mem": "音频与文本组合",
+    "struct_def": {
+      "snd_string": {
+        "snd": "snd",
+        "str": "string"
+      }
+    }
+  }
+}

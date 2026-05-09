@@ -1,0 +1,209 @@
+{
+  "version": 1,
+  "note": "本文件列出“数据类型可能关联的所有 UI 渲染组件(type_render)”，以及这些组件会读取的 type_agv 参数。渲染组件与 TypeConfig 解耦：字段最终渲染 = struct_def 字段覆盖 ( gmdata 覆盖 ( 内置 TypeConfig[type] ) )，最终取到 type_render 与 type_agv 后由渲染器消费。",
+  "renderers": {
+    "input": {
+      "display_name": "智能输入(兜底)",
+      "purpose": "默认兜底渲染器：根据当前字符串内容自动推断 int/float/bool/json/string，并切换到对应渲染器。",
+      "typical_types": ["var", "unknown"],
+      "type_agv_schema": {},
+      "ui_behavior": [
+        "双击进入编辑",
+        "自动推断：true/false→bool；纯数字→int/float；以 {/[/( 开头→容器；其他→string"
+      ]
+    },
+    "input_string": {
+      "display_name": "文本输入",
+      "purpose": "单行文本输入。",
+      "typical_types": ["string"],
+      "type_agv_schema": {},
+      "ui_behavior": ["双击编辑", "回车提交，ESC 取消"]
+    },
+    "input_int": {
+      "display_name": "整数输入",
+      "purpose": "整型输入，支持不同进制显示/解析。",
+      "typical_types": ["int"],
+      "type_agv_schema": {
+        "radix": {
+          "type": "string",
+          "default": "dec",
+          "enum": ["dec", "hex", "bin"],
+          "description": "显示/解析进制。hex 显示为 0x..；bin 显示为 0b..。"
+        }
+      },
+      "ui_behavior": ["双击编辑", "允许输入 -、0x 前缀、0b 前缀"]
+    },
+    "input_float": {
+      "display_name": "小数输入",
+      "purpose": "浮点输入，支持小数位与百分比显示。",
+      "typical_types": ["float"],
+      "type_agv_schema": {
+        "decimal_places": {
+          "type": "number",
+          "default": 2,
+          "description": "显示时保留的小数位数。"
+        },
+        "percent": {
+          "type": "boolean",
+          "default": false,
+          "description": "true 时显示为百分比(×100并追加%)，写回时会除以100。"
+        }
+      }
+    },
+    "dynamic": {
+      "display_name": "动态输入",
+      "purpose": "等同于 input（智能推断）。",
+      "typical_types": ["var"],
+      "type_agv_schema": {}
+    },
+    "range": {
+      "display_name": "滑杆(range)",
+      "purpose": "范围滑杆，用于在 min/max 内快速选择数值。",
+      "typical_types": ["range_int", "range_float"],
+      "type_agv_schema": {
+        "min": { "type": "number", "default": 0, "description": "最小值。" },
+        "max": { "type": "number", "default": 100, "description": "最大值。" },
+        "step": { "type": "number", "default": 1, "description": "步进。" },
+        "suffix": { "type": "string", "default": "", "description": "显示/保存时附加后缀（例如 %）。渲染会在 parse 时剥离后缀。"}
+      },
+      "ui_behavior": ["拖动滑杆实时写回字符串值（带 suffix 时会拼接后缀）"]
+    },
+    "enum": {
+      "display_name": "枚举下拉(enum)",
+      "purpose": "下拉选择，支持颜色标注。",
+      "typical_types": ["enum_int", "enum_string"],
+      "type_agv_schema": {
+        "options": {
+          "type": "object|array",
+          "default": {},
+          "description": "可用选项。支持两种形态：1) 对象：{value: 'label' 或 'label:color'}；2) 数组：[{value,label,color?}]。"
+        }
+      },
+      "ui_behavior": ["点击箭头打开下拉（Portal）", "全局只允许同时打开一个枚举下拉"]
+    },
+    "bool": {
+      "display_name": "布尔开关(bool)",
+      "purpose": "0/1 或 true/false 的开关。",
+      "typical_types": ["bool", "toggle"],
+      "type_agv_schema": {},
+      "ui_behavior": ["点击切换 0/1"]
+    },
+    "toggle": {
+      "display_name": "布尔开关(toggle)",
+      "purpose": "别名：与 bool 相同，复用同一渲染器。",
+      "typical_types": ["toggle"],
+      "type_agv_schema": {}
+    },
+    "color": {
+      "display_name": "颜色选择器(color)",
+      "purpose": "颜色选择器弹窗，显示色块+文本。支持多种输入格式（#RRGGBB/#AARRGGBB/纯hex/十进制）。",
+      "typical_types": ["color"],
+      "type_agv_schema": {},
+      "ui_behavior": [
+        "点击色块打开拾色器（Portal）",
+        "会尽量保持原始输入格式（例如原先是十进制则写回十进制）"
+      ]
+    },
+    "img": {
+      "display_name": "图片资源(img)",
+      "purpose": "图片资源路径（通常配合拖拽/右键菜单）。",
+      "typical_types": ["img", "string(资源)"],
+      "type_agv_schema": {
+        "suffix": {
+          "type": "string",
+          "default": ".png,.jpg,.jpeg,.bmp",
+          "description": "允许的图片后缀列表（逗号分隔）。用于校验与拖拽放行。"
+        },
+        "path_mode": {
+          "type": "string",
+          "default": "project",
+          "enum": ["project", "absolute", "relative"],
+          "description": "拖入文件时路径写入模式（在 DropTarget 中使用）。"
+        }
+      },
+      "ui_behavior": ["支持文件拖拽写入路径", "右键：打开 / 定位文件"]
+    },
+    "snd": {
+      "display_name": "音频资源(snd)",
+      "purpose": "音频资源路径 + 轻量播放控件。",
+      "typical_types": ["snd", "string(资源)"],
+      "type_agv_schema": {
+        "suffix": {
+          "type": "string",
+          "default": ".mp3,.wav,.ogg",
+          "description": "允许的音频后缀列表（逗号分隔）。用于拖拽放行。"
+        },
+        "path_mode": {
+          "type": "string",
+          "default": "project",
+          "enum": ["project", "absolute", "relative"],
+          "description": "拖入文件时路径写入模式（在 DropTarget 中使用）。"
+        }
+      },
+      "ui_behavior": ["播放/暂停按钮 + 进度条", "右键：打开 / 定位文件"]
+    },
+    "ref_id": {
+      "display_name": "引用(ref_id)",
+      "purpose": "引用其他表的 ID。提供右键“跳转到 ID”。",
+      "typical_types": ["ref_id"],
+      "type_agv_schema": {},
+      "ui_behavior": ["可接受从 id/ref_id 单元格拖拽", "右键：跳转到 ID"]
+    },
+    "id": {
+      "display_name": "编号(id)",
+      "purpose": "主键 ID（通常只读展示 + 拖拽句柄）。",
+      "typical_types": ["id"],
+      "type_agv_schema": {
+        "ref_column": {
+          "type": "string",
+          "default": "name",
+          "description": "用于显示 ID 旁边关联的文本列名（在 Grid/ReferenceResolver 中使用）。"
+        }
+      },
+      "ui_behavior": ["通常只读展示", "可作为拖拽目标用于行重排/复制"]
+    },
+    "date": {
+      "display_name": "日期(date)",
+      "purpose": "日期输入（当前实现复用 InputStringRender + input[type=date]）。",
+      "typical_types": ["date"],
+      "type_agv_schema": {},
+      "ui_behavior": ["使用浏览器原生 date input（可后续替换为自绘）"]
+    },
+    "struct": {
+      "display_name": "结构体容器(struct)",
+      "purpose": "容器渲染器：用于快捷结构体（TypeConfig.base_type=struct 且 struct_def 存在）或自定义 struct_def。",
+      "typical_types": ["id_num", "id_string", "string_num", "img_num", "snd_num", "img_string", "snd_string", "custom_struct"],
+      "type_agv_schema": {},
+      "additional_schema_fields": {
+        "struct_def": "结构体字段定义。快捷结构体来自 TypeConfig[structType].struct_def；也允许在表字段定义里提供 struct_def 覆盖。"
+      },
+      "ui_behavior": ["单元格内显示缩略；点击/事件可打开侧栏进行逐字段编辑（open-container-sidebar）"]
+    },
+    "array": {
+      "display_name": "数组容器(array)",
+      "purpose": "容器渲染器：用于 array[...] 类型（元素类型来自 type 字符串解析）。支持增删元素与侧栏编辑。",
+      "typical_types": ["array[int]", "array[string]", "array[id_num]", "array[var]"],
+      "type_agv_schema": {},
+      "ui_behavior": ["支持快速新增元素（使用元素类型 default 推断）", "点击打开侧栏编辑整个数组"]
+    }
+  },
+  "render_registry_keys": [
+    "input",
+    "input_string",
+    "input_int",
+    "input_float",
+    "dynamic",
+    "range",
+    "bool",
+    "toggle",
+    "color",
+    "enum",
+    "img",
+    "snd",
+    "ref_id",
+    "id",
+    "date",
+    "struct",
+    "array"
+  ]
+}

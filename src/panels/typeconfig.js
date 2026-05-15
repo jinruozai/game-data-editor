@@ -1,147 +1,15 @@
 ﻿/**
  * Project TypeConfig panel.
  *
- * The list shows every project + built-in type. Clicking an item selects
- * it through State.selection with kind='typeconfig', which Inspector
- * renders as an editable TypeDef via the provider registered at the
- * bottom of this file. Edits persist into projectTypeConfig 鈥?so editing
- * a built-in type implicitly creates a project-level override.
+ * The list shows every project + built-in type. Clicking an item selects it
+ * through State.selection with kind='typeconfig'. The Inspector provider for
+ * that selection lives in src/inspector/providers/typeconfig.js.
  */
 (function () {
   'use strict';
 
   var ui = EF.ui;
 
-  // 鈹€鈹€ Inspector provider for kind='typeconfig' 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
-  // Schema is memoized 鈥?propertyPanel only rebuilds its rows when the
-  // schema *reference* changes (Object.is check inside the schema effect).
-  // Returning a fresh object on every refresh() would rebuild every row's
-  // DOM on every keystroke, losing focus. One stable reference = focus
-  // survives edits. type_render options follow whichever renderers are
-  // currently registered at first lookup; rebuilding the cache happens only
-  // if a new renderer gets registered after this panel first opens.
-  var _schemaCache = {};
-  var _schemaKindCount = -1;
-  function buildTypeDefSchema(baseType) {
-    var kinds = ui.listRenderKinds();
-    var base = baseType || 'string';
-    var cacheKey = base + ':' + kinds.length;
-    if (_schemaCache[cacheKey] && _schemaKindCount === kinds.length) return _schemaCache[cacheKey];
-    var kindOpts = {};
-    renderKindsForBase(base, kinds).forEach(function (k) { kindOpts[k] = k; });
-    _schemaCache[cacheKey] = {
-      key:         { type: 'string', commit: 'blur' },
-      name:        { type: 'string' },
-      base_type:   { type: 'enum_string', type_agv: { options: { int: 'int', float: 'float', string: 'string', struct: 'struct', array: 'array', var: 'var' } } },
-      type_render: { type: 'enum_string', type_agv: { options: kindOpts } },
-      'default':   { type: 'string', mem: 'Default value (JSON literal)' },
-      mem:         { type: 'string', mem: 'Description' },
-      type_agv:    { type: 'string', mem: 'Render args (JSON object)' },
-    };
-    _schemaKindCount = kinds.length;
-    return _schemaCache[cacheKey];
-  }
-
-  // Exposed so tables' struct_def override editor can render exactly the
-  // same rows as the TypeConfig panel (single source of truth for the
-  // TypeDef shape). Any change to the schema here flows to both UIs.
-  window.TypeDefSchema = {
-    build: buildTypeDefSchema,
-    // Identity keys 鈥?those whose values *define the type itself*, hence
-    // not overridable per-table. Consumers hide the edit/revert button
-    // and keep the editor disabled for these rows.
-    IDENTITY_KEYS: ['key', 'name', 'base_type'],
-  };
-
-  function toFormValue(td, key) {
-    var t = td || {};
-    return {
-      key:         key || '',
-      name:        t.name || '',
-      base_type:   t.base_type || 'string',
-      type_render: t.type_render || 'input_string',
-      'default':   JSON.stringify(t.default == null ? '' : t.default),
-      mem:         t.mem || '',
-      type_agv:    JSON.stringify(t.type_agv || {}),
-    };
-  }
-
-  function renderKindsForBase(baseType, registered) {
-    var base = State.resolveType(baseType) || ui.resolveType(baseType) || {};
-    var support = base.support_render || [];
-    if (!support.length) support = [base.type_render || baseType || 'input_string'];
-    var available = {};
-    (registered || ui.listRenderKinds()).forEach(function (k) { available[k] = true; });
-    var out = support.filter(function (k) { return available[k]; });
-    return out.length ? out : ['input_string'];
-  }
-
-  function defaultRenderForBase(baseType) {
-    return renderKindsForBase(baseType)[0] || 'input_string';
-  }
-
-  function defaultValueForBase(baseType) {
-    if (baseType === 'int') return 0;
-    if (baseType === 'float') return 0;
-    if (baseType === 'string') return '';
-    if (baseType === 'struct') return {};
-    if (baseType === 'array') return [];
-    return null;
-  }
-
-  function valueMatchesBase(baseType, value) {
-    if (baseType === 'int' || baseType === 'float') return typeof value === 'number' && isFinite(value);
-    if (baseType === 'string') return typeof value === 'string';
-    if (baseType === 'struct') return !!value && typeof value === 'object' && !Array.isArray(value);
-    if (baseType === 'array') return Array.isArray(value);
-    return true;
-  }
-
-  function applyEdit(key, field, nv) {
-    if (field === 'key') {
-      if (!nv || nv === key) return;
-      try {
-        State.renameProjectType(key, nv);
-        State.setSelection({ kind: 'typeconfig', key: nv });
-      } catch (e) {
-        State.log('error', String(e.message || e));
-      }
-      return;
-    }
-    var current = State.resolveType(key) || {};
-    var patch = {};
-    if (field === 'base_type') {
-      patch.base_type = nv;
-      if (renderKindsForBase(nv).indexOf(current.type_render) < 0) patch.type_render = defaultRenderForBase(nv);
-      if (!valueMatchesBase(nv, current.default)) patch.default = defaultValueForBase(nv);
-    } else if (field === 'type_render') {
-      if (renderKindsForBase(current.base_type || 'string').indexOf(nv) < 0) return;
-      patch.type_render = nv;
-    } else if (field === 'default') {
-      try { patch[field] = JSON.parse(nv); } catch (_) { patch[field] = nv; }
-    } else if (field === 'type_agv') {
-      // Invalid JSON = silently skip; user keeps typing, the raw string
-      // stays in the input field until they make it parse cleanly.
-      try { patch[field] = JSON.parse(nv); } catch (_) { return; }
-    } else {
-      patch[field] = nv;
-    }
-    State.upsertProjectType(key, Object.assign({}, current, patch));
-  }
-
-  Inspector.registerKind('typeconfig', {
-    title:     function (sel) { return sel.key; },
-    disabled:  function (sel) { return !State.projectTypeConfig()[sel.key]; },
-    schema:    function (sel) {
-      var td = State.resolveType(sel.key) || {};
-      return buildTypeDefSchema(td.base_type || 'string');
-    },
-    value:     function (sel) { return toFormValue(State.resolveType(sel.key), sel.key); },
-    onChange:  function (sel, field, nv) { applyEdit(sel.key, field, nv); },
-    dataTopic: function ()    { return 'typeconfig:changed'; },
-  });
-
-  // 鈹€鈹€ Panel component 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
   function randomTypeName() {
     var existing = Object.assign({}, State.builtinTypeConfig(), State.projectTypeConfig());
     for (var i = 0; i < 100; i++) {
@@ -354,4 +222,3 @@
     defaults: function () { return { title: 'TypeConfig', props: {} }; },
   });
 })();
-

@@ -11734,7 +11734,7 @@
 //     default:     any,
 //     mem?:        string,        // tooltip / description
 //     type_agv?:   object,        // renderer args (radix/min/max/options/...)
-//     struct_def?: object,        // { field: FieldDef | typeName } for struct
+//     struct_def?: object,        // ordered { field: FieldDef | typeName } for array-backed struct
 //     support_render?: string[],  // optional whitelist the TypeConfig editor
 //                                 // uses to populate render-kind dropdowns
 //   }
@@ -12232,17 +12232,38 @@
       const err = ui.h('div', 'ef-ui-struct-input', { text: '(invalid struct_def)' })
       return err
     }
-    const fields = Object.keys(def).map(function (fname) {
+    const keys = Object.keys(def)
+    const fields = keys.map(function (fname) {
       const raw     = def[fname]
       const subFd   = ui.resolveFieldDef(typeof raw === 'string' ? { type: raw } : raw)
-      const labeled = (subFd && subFd.name && subFd.name !== subFd.base_type) ? subFd.name : fname
+      const labeled = raw && typeof raw === 'object' && (raw.label || raw.name) || fname
       return {
         key:    fname,
         label:  labeled,
+        tooltip: raw && typeof raw === 'object' ? (raw.desc || raw.mem || '') : '',
         editor: function (sig, write, ctx) { return editorFor(subFd, sig, write, ctx) },
       }
     })
-    return ui.structInput({ value: a.sig, fields: fields, onChange: a.write, ctx: a.ctx })
+    const recordSig = EF.derived(function () {
+      const tuple = Array.isArray(a.sig()) ? a.sig() : []
+      const out = {}
+      keys.forEach(function (key, index) { out[key] = tuple[index] })
+      return out
+    })
+    const el = ui.structInput({
+      value: recordSig,
+      fields: fields,
+      onChange: function (_next, changedKey, newValue) {
+        const tuple = Array.isArray(a.sig.peek()) ? a.sig.peek().slice() : []
+        const index = keys.indexOf(changedKey)
+        if (index < 0) return
+        tuple[index] = newValue
+        a.write(tuple)
+      },
+      ctx: a.ctx,
+    })
+    ui.collect(el, recordSig.dispose)
+    return el
   })
 
   ui.registerRenderer('array', function (a) {
@@ -12285,7 +12306,9 @@
     return m ? m[1] : null
   }
 
-  // Accept two struct_def shapes for convenience:
+  // Accept two struct_def declaration shapes. Both define ordered fields;
+  // struct values themselves are stored as arrays in that field order.
+  //
   //   { field1: typeName, field2: typeName }                  (flat)
   //   { wrapperKey: { field1: typeName, field2: typeName } }  (wrapped)
   function normalizeStructDef(def) {
@@ -12392,8 +12415,8 @@
             const subFd = ui.resolveFieldDef(typeof raw === 'string' ? { type: raw } : raw)
             return {
               key:     fname,
-              label:   raw.label || fname,
-              tooltip: subFd.desc || '',
+              label:   raw.label || raw.name || fname,
+              tooltip: raw.desc || raw.mem || subFd.desc || '',
               editor:  function (slotSig, write, innerCtx) {
                 return slotEditor(slotSig, write, fieldCtx(innerCtx, fname), subFd, fname, defaults)
               },

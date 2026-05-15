@@ -104,7 +104,7 @@ Use custom structs for repeated value groups.
       "name": "StatValue",
       "base_type": "struct",
       "type_render": "struct",
-      "default": { "attribute": 0, "value": 0 },
+      "default": [0, 0],
       "mem": "Attribute id + numeric value",
       "struct_def": {
         "stat_value": {

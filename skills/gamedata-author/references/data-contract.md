@@ -166,7 +166,7 @@ Value conventions:
 - `snd`: string, prefer `asset://...`.
 - `id` / `ref_id`: entity reference value. Prefer numeric JSON value when possible; entity object keys remain strings.
 - `array`: JSON array.
-- `struct`: JSON object. Shortcut compound types also use named fields, such as `id_num` = `{ "id": 123, "num": 10 }`.
+- `struct`: JSON array. Values are interpreted by `struct_def` field order, such as `id_num` = `[123, 10]` where index 0 is `id` and index 1 is `num`.
 
 ## References And Catalog Tables
 
@@ -202,7 +202,7 @@ Reference discipline:
 - Store only the target id where a link is needed.
 - Do not copy target names, icons, or stats unless denormalization is explicitly requested.
 - If using `ref_id`, ensure the id exists in exactly one table.
-- Use `id_num` for quantity pairs such as `{ "id": currencyId, "num": amount }` or `{ "id": itemId, "num": count }`.
+- Use `id_num` for quantity pairs such as `[currencyId, amount]` or `[itemId, count]`.
 - Use arrays of ids for many-to-many links.
 
 ## Assets

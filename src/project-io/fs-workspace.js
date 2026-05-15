@@ -27,7 +27,7 @@
     if (!supported()) throw new Error('This browser does not support folder access.');
     var dir = await window.showDirectoryPicker({ mode: 'readwrite' });
     current = { kind: 'folder', name: dir.name, handle: dir };
-    await save(options);
+    await save(Object.assign({}, options, { full: true }));
     return current;
   }
 
@@ -40,8 +40,10 @@
     report(progress, 'Serializing project...');
     var snapshot = c().exportSnapshot();
     var files = c().snapshotToFiles(snapshot);
-    await writeProjectFiles(current.handle, files, progress);
-    await ProjectIO.assets.writeToDirectory(current.handle, { progress: progress });
+    var plan = options.plan || ProjectIO.savePlan.diff(files, { allAdded: !!options.full });
+    await writeProjectFiles(current.handle, files, plan, progress, { full: !!options.full });
+    await ProjectIO.assets.writeToDirectory(current.handle, { progress: progress, full: !!options.full, plan: options.assetPlan });
+    ProjectIO.savePlan.markSaved(files, plan);
     report(progress, 'Save complete', 1, 1);
     return current;
   }
@@ -55,6 +57,7 @@
     await ProjectIO.assets.loadFromDirectory(dir, { progress: progress });
     report(progress, 'Applying project data...');
     c().applySnapshot(c().filesToSnapshot(files), dir.name);
+    ProjectIO.savePlan.setBaseline(c().snapshotToFiles(c().exportSnapshot()));
     if (window.GDE && GDE.history) GDE.history.reset(t('history.open_project', { name: dir.name }), { saved: true });
     report(progress, 'Project loaded', 1, 1);
   }
@@ -98,24 +101,33 @@
     }
   }
 
-  async function writeProjectFiles(dir, files, progress) {
+  async function writeProjectFiles(dir, files, plan, progress, options) {
+    options = options || {};
+    plan = plan || [];
     report(progress, 'Scanning old project files...');
-    var existing = await listProjectJsonFiles(dir);
+    var existing = options.full ? await listProjectJsonFiles(dir) : [];
     var wanted = {};
     Object.keys(files).forEach(function (path) { wanted[path] = true; });
 
-    for (var i = 0; i < existing.length; i++) {
-      var path = existing[i];
-      if (path === 'gamedata.json') continue;
-      if (!wanted[path]) await removePath(dir, path);
+    if (options.full) {
+      for (var i = 0; i < existing.length; i++) {
+        var oldPath = existing[i];
+        if (oldPath === 'gamedata.json') continue;
+        if (!wanted[oldPath]) await removePath(dir, oldPath);
+      }
+    } else {
+      for (var d = 0; d < plan.length; d++) {
+        if (plan[d].status === 'deleted') await removePath(dir, plan[d].path);
+      }
     }
-    var paths = Object.keys(files).sort();
-    for (var j = 0; j < paths.length; j++) {
-      report(progress, 'Writing JSON files...', j, paths.length, paths[j]);
-      await writeTextFile(dir, paths[j], files[paths[j]]);
+
+    var writeItems = plan.filter(function (item) { return item.status === 'added' || item.status === 'modified'; });
+    for (var j = 0; j < writeItems.length; j++) {
+      report(progress, 'Writing JSON files...', j, writeItems.length, writeItems[j].path);
+      await writeTextFile(dir, writeItems[j].path, files[writeItems[j].path]);
       await yieldUI();
     }
-    report(progress, 'Writing JSON files...', paths.length, paths.length);
+    report(progress, 'Writing JSON files...', writeItems.length, writeItems.length);
   }
 
   async function listProjectJsonFiles(dir) {
@@ -155,14 +167,44 @@
     var parts = path.split('/');
     var name = parts.pop();
     var dir = root;
-    for (var i = 0; i < parts.length; i++) {
-      dir = await dir.getDirectoryHandle(parts[i], { create: false });
-    }
-    await dir.removeEntry(name);
+    try {
+      for (var i = 0; i < parts.length; i++) {
+        dir = await dir.getDirectoryHandle(parts[i], { create: false });
+      }
+      await dir.removeEntry(name);
+    } catch (_) {}
   }
 
   function workspace() { return current; }
-  function setWorkspace(ws) { current = ws || null; }
+  function setWorkspace(ws) {
+    current = ws || null;
+    if (!current && ProjectIO.savePlan) ProjectIO.savePlan.clearBaseline();
+  }
+
+  function previewSavePlan(options) {
+    options = options || {};
+    var files = c().snapshotToFiles(c().exportSnapshot());
+    var json = ProjectIO.savePlan.diff(files, { allAdded: !!options.full });
+    var assets = ProjectIO.assets.savePlan({ full: !!options.full });
+    return json.map(function (item) {
+      return Object.assign({ kind: 'json' }, item);
+    }).concat(assets.map(function (item) {
+      return Object.assign({ kind: 'asset' }, item);
+    })).sort(function (a, b) {
+      return statusRank(a.status) - statusRank(b.status) || a.path.localeCompare(b.path, undefined, { numeric: true });
+    });
+  }
+
+  function statusRank(status) {
+    return status === 'added' ? 0 : status === 'modified' ? 1 : 2;
+  }
+
+  async function saveSelected(items, options) {
+    options = options || {};
+    var jsonPlan = (items || []).filter(function (item) { return item.kind === 'json'; });
+    var assetPlan = (items || []).filter(function (item) { return item.kind === 'asset'; });
+    return save(Object.assign({}, options, { plan: jsonPlan, assetPlan: assetPlan }));
+  }
 
   function report(progress, message, current, total, detail) {
     if (typeof progress !== 'function') return;
@@ -186,7 +228,9 @@
     openFolder: openFolder,
     loadFromHandle: loadFromHandle,
     save: save,
+    saveSelected: saveSelected,
     saveAs: saveAs,
+    previewSavePlan: previewSavePlan,
     workspace: workspace,
     setWorkspace: setWorkspace,
   };

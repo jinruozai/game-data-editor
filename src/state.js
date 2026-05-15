@@ -18,9 +18,8 @@
  *   'tables:changed', 'data:changed:<pathKey>', 'selection:changed',
  *   'typeconfig:changed', 'log'
  *
- * Tab management: openTabs is NOT a separate signal. The center dock's
- * panels ARE the open tabs. openTable/closeTab/pinTab call into the EF
- * LayoutHandle. activeTable signal is kept in sync via an effect in main.js.
+ * Tab management lives in GDE.layout. State keeps the public project-facing
+ * API as thin delegations so panels do not import layout details.
  */
 (function () {
   'use strict';
@@ -46,164 +45,19 @@
   // kind), but updated whenever a card_style / card_component is selected.
   var activeCardStyle = EF.signal(null);
 
-  // ---------- Layout handle (set by main.js after createDockLayout) ----------
-  var _handle = null;
-  var _centerDockName = 'center';
+  function layout() {
+    return window.GDE && GDE.layout ? GDE.layout : null;
+  }
 
   function _setLayout(handle, centerDockName) {
-    _handle = handle;
-    if (centerDockName) _centerDockName = centerDockName;
+    var api = layout();
+    if (api) api.setLayout(handle, centerDockName);
   }
 
   function destroy() {
     stopTypeConfigEffect();
-    _handle = null;
-  }
-
-  function _centerDockId() {
-    if (!_handle) return null;
-    var tree = _handle.tree();
-    var id = null;
-    (function walk(n) {
-      if (!n) return;
-      if (n.type === 'dock' && n.name === _centerDockName) id = n.id;
-      else if (n.type === 'split') n.children.forEach(walk);
-    })(tree);
-    return id;
-  }
-
-  function _stableStringify(value) {
-    if (value == null) return '';
-    if (Array.isArray(value)) return '[' + value.map(_stableStringify).join(',') + ']';
-    if (typeof value === 'object') {
-      return '{' + Object.keys(value).sort().map(function (key) {
-        return JSON.stringify(key) + ':' + _stableStringify(value[key]);
-      }).join(',') + '}';
-    }
-    return JSON.stringify(value);
-  }
-
-  function _samePanelIntent(a, b) {
-    if (!a || !b || a.component !== b.component) return false;
-    if (a.name && b.name) return a.name === b.name;
-    return _stableStringify(a.props || {}) === _stableStringify(b.props || {});
-  }
-
-  function _findMainPanel(panel) {
-    if (!_handle || !panel) return null;
-    var tree = _handle.tree();
-    var found = null;
-    (function walk(n) {
-      if (!n || found) return;
-      if (n.type === 'dock' && n.name === _centerDockName) {
-        for (var i = 0; i < n.panels.length; i++) {
-          if (_samePanelIntent(n.panels[i], panel)) {
-            found = { panel: n.panels[i], dockId: n.id };
-            return;
-          }
-        }
-      } else if (n.type === 'split') {
-        n.children.forEach(walk);
-      }
-    })(tree);
-    return found;
-  }
-
-  function _findTablePanel(pathKey) {
-    if (!_handle) return null;
-    var tree = _handle.tree();
-    var found = null;
-    (function walk(n) {
-      if (!n || found) return;
-      if (n.type === 'dock' && n.name === _centerDockName) {
-        for (var i = 0; i < n.panels.length; i++) {
-          var p = n.panels[i];
-          if (p.component === 'gde-table-data' && p.props && p.props.pathKey === pathKey) {
-            found = { panel: p, dockId: n.id };
-            return;
-          }
-        }
-      } else if (n.type === 'split') {
-        n.children.forEach(walk);
-      }
-    })(tree);
-    return found;
-  }
-
-  function _findCardStylePanel(styleKey) {
-    if (!_handle) return null;
-    var tree = _handle.tree();
-    var found = null;
-    (function walk(n) {
-      if (!n || found) return;
-      if (n.type === 'dock' && n.name === _centerDockName) {
-        for (var i = 0; i < n.panels.length; i++) {
-          var p = n.panels[i];
-          if (p.component === 'gde-cardstyle-editor' && p.props && p.props.styleKey === styleKey) {
-            found = { panel: p, dockId: n.id };
-            return;
-          }
-        }
-      } else if (n.type === 'split') {
-        n.children.forEach(walk);
-      }
-    })(tree);
-    return found;
-  }
-
-  function _allCenterPanels() {
-    if (!_handle) return [];
-    var tree = _handle.tree();
-    var out = [];
-    (function walk(n) {
-      if (!n) return;
-      if (n.type === 'dock' && n.name === _centerDockName) {
-        n.panels.forEach(function (p) { out.push(p); });
-      } else if (n.type === 'split') {
-        n.children.forEach(walk);
-      }
-    })(tree);
-    return out;
-  }
-
-  function _findPanelByComponent(component) {
-    if (!_handle) return null;
-    var tree = _handle.tree();
-    var found = null;
-    (function walk(n) {
-      if (!n || found) return;
-      if (n.type === 'dock') {
-        for (var i = 0; i < n.panels.length; i++) {
-          if (n.panels[i].component === component) {
-            found = { panel: n.panels[i], dockId: n.id, dockName: n.name };
-            return;
-          }
-        }
-      } else if (n.type === 'split') {
-        n.children.forEach(walk);
-      }
-    })(tree);
-    return found;
-  }
-
-  function showCardStyleTree() {
-    var hit = _findPanelByComponent('gde-cardstyle-tree');
-    if (hit && _handle) _handle.activatePanel(hit.panel.id);
-  }
-
-  function showSearchPanel(query) {
-    var hit = _findPanelByComponent('gde-search');
-    if (hit && _handle) _handle.activatePanel(hit.panel.id);
-    if (query != null) {
-      setTimeout(function () {
-        EF.bus.emit('search:set', { query: String(query || '') });
-      }, 0);
-    }
-  }
-
-  function _shortName(pathKey) {
-    var parts = String(pathKey || '').split('/');
-    return parts[parts.length - 1] || pathKey;
+    var api = layout();
+    if (api) api.destroy();
   }
 
   // ---------- Helpers ----------
@@ -215,6 +69,9 @@
   }
   function emit(ev, payload) {
     if (isDirtyEvent(ev)) dirty.set(true);
+    if (isDirtyEvent(ev) && window.ProjectIO && ProjectIO.savePlan && ProjectIO.savePlan.recordEvent) {
+      ProjectIO.savePlan.recordEvent(ev, payload);
+    }
     EF.bus.emit(ev, payload);
     if (isDirtyEvent(ev) && window.GDE && GDE.history) GDE.history.captureEvent(ev, payload);
   }
@@ -343,10 +200,7 @@
       }
     });
     if (nextTm) { tableMap.set(nextTm); emit('tables:changed'); }
-    if (_handle) {
-      var hit = _findCardStylePanel(key);
-      if (hit) _handle.removePanel(hit.panel.id);
-    }
+    if (layout()) layout().closeCardStyle(key);
     if (activeCardStyle.peek() === key) activeCardStyle.set(null);
     var sel = selection.peek();
     if (sel && ((sel.kind === 'card_style' && sel.key === key)
@@ -373,17 +227,7 @@
       }
     });
     if (nextTm) { tableMap.set(nextTm); emit('tables:changed'); }
-    if (_handle) {
-      var hit = _findCardStylePanel(oldKey);
-      if (hit) {
-        var tree = _handle.tree();
-        tree = EF.updatePanel(tree, hit.panel.id, {
-          title: (cs[newKey] && cs[newKey].name) || newKey,
-          props: Object.assign({}, hit.panel.props, { styleKey: newKey }),
-        });
-        _handle.setTree(tree);
-      }
-    }
+    if (layout()) layout().renameCardStyle(oldKey, newKey, (cs[newKey] && cs[newKey].name) || newKey);
     if (activeCardStyle.peek() === oldKey) activeCardStyle.set(newKey);
     var sel = selection.peek();
     if (sel && sel.kind === 'card_style' && sel.key === oldKey) {
@@ -437,18 +281,8 @@
     if (tm[newKey]) throw new Error('Table name already exists: ' + newKey);
     tm[newKey] = tm[oldKey]; delete tm[oldKey];
     tableMap.set(tm);
-    // Sync any open panel for this table → patch props.pathKey + title.
-    if (_handle) {
-      var hit = _findTablePanel(oldKey);
-      if (hit) {
-        var tree = _handle.tree();
-        tree = EF.updatePanel(tree, hit.panel.id, {
-          title: _shortName(newKey),
-          props: Object.assign({}, hit.panel.props, { pathKey: newKey }),
-        });
-        _handle.setTree(tree);
-      }
-    }
+    // Sync any open panel for this table through the app layout bridge.
+    if (layout()) layout().renameTable(oldKey, newKey);
     emit('tables:changed');
   }
   function deleteTable(pathKey) {
@@ -462,10 +296,7 @@
     tableMap.set(tm);
     // Close the panel for this table if open (LayoutHandle handles
     // active re-selection automatically via activation-history).
-    if (_handle) {
-      var hit = _findTablePanel(pathKey);
-      if (hit) _handle.removePanel(hit.panel.id);
-    }
+    if (layout()) layout().closeTable(pathKey);
     emit('tables:changed');
   }
   function updateStructDef(pathKey, struct_def) {
@@ -717,9 +548,8 @@
   }
 
   function setActiveTable(pathKey) {
-    if (!_handle || !pathKey) { activeTable.set(pathKey); return; }
-    var hit = _findTablePanel(pathKey);
-    if (hit) _handle.activatePanel(hit.panel.id);
+    var api = layout();
+    if (!pathKey || !api || !api.setActiveTable(pathKey)) activeTable.set(pathKey);
   }
 
   function firstTablePath() {
@@ -740,19 +570,8 @@
 
   // ---------- Tab management ----------
   function openMainPanel(panel, opts) {
-    if (!panel || !_handle) return null;
-    opts = opts || {};
-    var transient = opts.transient != null ? !!opts.transient : true;
-    var hit = _findMainPanel(panel);
-    if (hit) {
-      _handle.activatePanel(hit.panel.id);
-      if (!transient && hit.panel.transient) _handle.promotePanel(hit.panel.id);
-      return { panelId: hit.panel.id, created: false };
-    }
-    var dockId = _centerDockId();
-    if (!dockId) return null;
-    var ret = _handle.addPanel(dockId, panel, { transient: transient });
-    return { panelId: ret && ret.panelId, created: true };
+    var api = layout();
+    return api ? api.openMainPanel(panel, opts) : null;
   }
 
   // openTable(pathKey, { transient }) — opens or activates the table panel.
@@ -760,45 +579,36 @@
   // promoted). Otherwise a new panel is added to the center dock. Framework-
   // level transient slot auto-evicts an existing transient panel (§ 4.4).
   function openTable(pathKey, opts) {
-    if (!pathKey || !_handle) return;
-    openMainPanel({
-      name: 'table:' + pathKey,
-      component: 'gde-table-data',
-      title:  _shortName(pathKey),
-      props:  { pathKey: pathKey },
-    }, opts);
+    var api = layout();
+    return api ? api.openTable(pathKey, opts) : null;
   }
   function openCardStyle(styleKey, opts) {
-    if (!styleKey || !_handle) return;
-    var def = projectCardStyles()[styleKey] || {};
-    openMainPanel({
-      name: 'cardstyle:' + styleKey,
-      component: 'gde-cardstyle-editor',
-      title:  def.name || styleKey,
-      icon:   'columns',
-      props:  { styleKey: styleKey },
-    }, opts);
+    var api = layout();
+    return api ? api.openCardStyle(styleKey, opts) : null;
   }
   function openSettings() {
-    if (!_handle) return;
-    openMainPanel({
-      name: 'settings',
-      component: 'settings',
-      title: t('panel.settings') || 'Settings',
-      icon: 'settings',
-      props: {},
-    }, { transient: false });
+    var api = layout();
+    return api ? api.openSettings() : null;
   }
   function closeTab(pathKey) {
-    var hit = _findTablePanel(pathKey);
-    if (hit) _handle.removePanel(hit.panel.id);
+    var api = layout();
+    if (api) api.closeTable(pathKey);
   }
   function pinTab(pathKey) {
-    var hit = _findTablePanel(pathKey);
-    if (hit) _handle.promotePanel(hit.panel.id);
+    var api = layout();
+    if (api) api.pinTable(pathKey);
   }
   function closeAllTabs() {
-    _allCenterPanels().forEach(function (p) { _handle.removePanel(p.id); });
+    var api = layout();
+    if (api) api.closeAllTabs();
+  }
+  function showCardStyleTree() {
+    var api = layout();
+    if (api) api.showCardStyleTree();
+  }
+  function showSearchPanel(query) {
+    var api = layout();
+    if (api) api.showSearchPanel(query);
   }
   function setSelection(sel) {
     if (sel && sel.kind === 'card_style') {
@@ -866,8 +676,8 @@
     if (baseType === 'bool') {
       return !!v;
     }
-    if (baseType === 'array') return Array.isArray(v) ? v : [];
-    if (baseType === 'struct' || baseType === 'var') return (v && typeof v === 'object' && !Array.isArray(v)) ? v : {};
+    if (baseType === 'array' || baseType === 'struct') return Array.isArray(v) ? v : [];
+    if (baseType === 'var') return (v && typeof v === 'object' && !Array.isArray(v)) ? v : {};
     return v;
   }
   function _baseTypeOk(v, baseType) {
@@ -875,8 +685,8 @@
     if (baseType === 'float')  return typeof v === 'number' && Number.isFinite(v);
     if (baseType === 'string') return typeof v === 'string';
     if (baseType === 'bool')   return typeof v === 'boolean';
-    if (baseType === 'array')  return Array.isArray(v);
-    if (baseType === 'struct' || baseType === 'var') return v && typeof v === 'object' && !Array.isArray(v);
+    if (baseType === 'array' || baseType === 'struct') return Array.isArray(v);
+    if (baseType === 'var') return v && typeof v === 'object' && !Array.isArray(v);
     return true;  // id, ref_id, enum_* — treat leniently
   }
   function _defaultFor(fd) {
@@ -888,8 +698,8 @@
     if (bt === 'int' || bt === 'float') return 0;
     if (bt === 'string') return '';
     if (bt === 'bool') return false;
-    if (bt === 'array') return [];
-    if (bt === 'struct' || bt === 'var') return {};
+    if (bt === 'array' || bt === 'struct') return [];
+    if (bt === 'var') return {};
     return null;
   }
 
@@ -1072,19 +882,8 @@
   }
 
   function showLogPanel() {
-    if (!_handle || !_handle.setDockCollapsed) return;
-    _handle.setDockCollapsed('log', false);
-    // Find + activate log panel too so it's in front.
-    var t = _handle.tree(), logPanelId = null;
-    (function walk(n) {
-      if (!n) return;
-      if (n.type === 'dock') {
-        (n.panels || []).forEach(function (p) { if (p.component === 'log') logPanelId = p.id; });
-      } else if (n.children) {
-        n.children.forEach(walk);
-      }
-    })(t);
-    if (logPanelId) _handle.activatePanel(logPanelId);
+    var api = layout();
+    if (api) api.showLogPanel();
   }
 
   // ---------- Logging ----------

@@ -75,6 +75,12 @@
     var status = document.createElement('div'); status.className = 'gde-status';
     host.appendChild(status);
 
+    var savePlanBtn = document.createElement('button');
+    savePlanBtn.type = 'button';
+    savePlanBtn.className = 'gde-save-plan-btn';
+    savePlanBtn.addEventListener('click', showSavePlan);
+    host.appendChild(savePlanBtn);
+
     var langBtn = document.createElement('div');
     langBtn.className = 'gde-brand';
     langBtn.style.marginLeft = '6px';
@@ -104,6 +110,8 @@
       status.appendChild(statusItem(t('toolbar.status.tables') + ' ', Object.keys(tm).length));
       status.appendChild(statusItem(t('toolbar.status.entities') + ' ', Object.keys(gd).length));
       status.appendChild(statusItem(t('toolbar.status.version'), State.version()));
+      var plan = ProjectIO.fsWorkspace.previewSavePlan ? ProjectIO.fsWorkspace.previewSavePlan() : [];
+      savePlanBtn.textContent = 'Save Plan ' + plan.length;
     }
 
     function statusItem(label, value) {
@@ -118,6 +126,142 @@
     brand.__efCleanups = brand.__efCleanups || [];
     brand.__efCleanups.push(I18N.onChange(refresh));
     GDE.effect(brand, refresh);
+  }
+
+  function showSavePlan() {
+    var plan = ProjectIO.fsWorkspace.previewSavePlan ? ProjectIO.fsWorkspace.previewSavePlan() : [];
+    var selected = {};
+    plan.forEach(function (item, i) { selected[planKey(item, i)] = true; });
+    var counts = { added: 0, modified: 0, deleted: 0 };
+    plan.forEach(function (item) { if (counts[item.status] != null) counts[item.status]++; });
+
+    var root = document.createElement('div');
+    root.className = 'gde-save-plan';
+
+    var controls = document.createElement('div');
+    controls.className = 'gde-save-plan-controls';
+    var selectAllLabel = document.createElement('label');
+    selectAllLabel.className = 'gde-save-plan-select-all';
+    var selectAll = document.createElement('input');
+    selectAll.type = 'checkbox';
+    selectAll.checked = true;
+    selectAllLabel.appendChild(selectAll);
+    selectAllLabel.appendChild(document.createTextNode('Select all'));
+    controls.appendChild(selectAllLabel);
+    root.appendChild(controls);
+
+    var summary = document.createElement('div');
+    summary.className = 'gde-save-plan-summary';
+    summary.appendChild(savePlanChip('added', counts.added));
+    summary.appendChild(savePlanChip('modified', counts.modified));
+    summary.appendChild(savePlanChip('deleted', counts.deleted));
+    root.appendChild(summary);
+
+    var list = document.createElement('div');
+    list.className = 'gde-save-plan-list';
+    if (!plan.length) {
+      var empty = document.createElement('div');
+      empty.className = 'gde-save-plan-empty';
+      empty.textContent = 'No file changes to save.';
+      list.appendChild(empty);
+    } else {
+      plan.forEach(function (item, i) {
+        var key = planKey(item, i);
+        var row = document.createElement('div');
+        row.className = 'gde-save-plan-row is-' + item.status;
+        var check = document.createElement('input');
+        check.type = 'checkbox';
+        check.className = 'gde-save-plan-check';
+        check.checked = true;
+        check.addEventListener('change', function () {
+          selected[key] = check.checked;
+          updateButtons();
+        });
+        var badge = document.createElement('span');
+        badge.className = 'gde-save-plan-status';
+        badge.textContent = item.status;
+        var path = document.createElement('span');
+        path.className = 'gde-save-plan-path';
+        path.textContent = item.path;
+        var meta = document.createElement('span');
+        meta.className = 'gde-save-plan-meta';
+        meta.textContent = item.kind + (item.bytes ? ' · ' + formatBytes(item.bytes) : '');
+        row.appendChild(check);
+        row.appendChild(badge);
+        row.appendChild(path);
+        row.appendChild(meta);
+        list.appendChild(row);
+      });
+    }
+    root.appendChild(list);
+
+    var foot = document.createElement('div');
+    foot.className = 'gde-save-plan-foot';
+    var saveBtn = EF.ui.button({
+      text: 'Save Selected',
+      kind: 'primary',
+      onClick: function () {
+        var picked = plan.filter(function (item, i) { return !!selected[planKey(item, i)]; });
+        if (!picked.length) return;
+        modal.close();
+        run('Save selected', async function (progress) {
+          if (window.GDE && GDE.history) GDE.history.flush();
+          var ws = await ProjectIO.fsWorkspace.saveSelected(picked, { progress: progress });
+          State.setWorkspaceInfo({ kind: 'folder', name: ws.name });
+          if (!ProjectIO.fsWorkspace.previewSavePlan().length) {
+            State.clearDirty();
+            if (window.GDE && GDE.history) GDE.history.markSaved();
+          }
+          await ProjectIO.recent.put(ws);
+          State.log('info', 'Saved selected files: ' + picked.length);
+        });
+      },
+    });
+    var closeBtn = EF.ui.button({ text: 'Close', kind: 'default', onClick: function () { modal.close(); } });
+    foot.appendChild(saveBtn);
+    foot.appendChild(closeBtn);
+    var modal = EF.ui.modal({
+      title: 'Save Plan',
+      content: root,
+      footer: foot,
+    });
+    modal.el.classList.add('gde-save-plan-modal');
+
+    selectAll.addEventListener('change', function () {
+      var checks = list.querySelectorAll('.gde-save-plan-check');
+      checks.forEach(function (input) { input.checked = selectAll.checked; });
+      plan.forEach(function (item, i) { selected[planKey(item, i)] = selectAll.checked; });
+      updateButtons();
+    });
+    updateButtons();
+
+    function updateButtons() {
+      var total = plan.filter(function (item, i) { return !!selected[planKey(item, i)]; }).length;
+      saveBtn.disabled = total === 0;
+      saveBtn.textContent = total ? 'Save Selected (' + total + ')' : 'Save Selected';
+      var checks = list.querySelectorAll('.gde-save-plan-check');
+      var checked = list.querySelectorAll('.gde-save-plan-check:checked');
+      selectAll.checked = checks.length > 0 && checked.length === checks.length;
+      selectAll.indeterminate = checked.length > 0 && checked.length < checks.length;
+    }
+  }
+
+  function planKey(item, index) {
+    return [index, item.kind, item.status, item.path].join('|');
+  }
+
+  function savePlanChip(status, count) {
+    var chip = document.createElement('span');
+    chip.className = 'gde-save-plan-chip is-' + status;
+    chip.textContent = status + ' ' + count;
+    return chip;
+  }
+
+  function formatBytes(n) {
+    n = Number(n) || 0;
+    if (n < 1024) return n + ' B';
+    if (n < 1024 * 1024) return Math.round(n / 1024) + ' KB';
+    return (n / 1024 / 1024).toFixed(1) + ' MB';
   }
 
   function doNew() {

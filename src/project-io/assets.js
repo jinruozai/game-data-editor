@@ -17,6 +17,8 @@
   var hashes = {};
   var folders = { '': true };
   var version = EF.signal(0);
+  var baseline = {};
+  var hasBaseline = false;
 
   function bump() {
     version.set(version.peek() + 1);
@@ -76,6 +78,56 @@
       if (f.blob) urls[path] = URL.createObjectURL(f.blob);
     });
     bump();
+  }
+
+  function signature(f) {
+    if (!f) return '';
+    return String(f.size || 0) + ':' + String(f.mtime || 0);
+  }
+
+  function setBaseline() {
+    baseline = {};
+    Object.keys(files).forEach(function (path) {
+      baseline[path] = signature(files[path]);
+    });
+    hasBaseline = true;
+  }
+
+  function clearBaseline() {
+    baseline = {};
+    hasBaseline = false;
+  }
+
+  function markSaved(plan) {
+    if (!hasBaseline) baseline = {};
+    (plan || []).forEach(function (item) {
+      var path = String(item.path || '');
+      if (path.indexOf(ASSET_DIR + '/') === 0) path = path.slice(ASSET_DIR.length + 1);
+      if (!path) return;
+      if (item.status === 'deleted') delete baseline[path];
+      else if (files[path]) baseline[path] = signature(files[path]);
+    });
+    hasBaseline = true;
+  }
+
+  function savePlan(options) {
+    options = options || {};
+    version();
+    var base = hasBaseline && !options.full ? baseline : {};
+    var plan = [];
+    var seen = {};
+    Object.keys(files).sort().forEach(function (path) {
+      seen[path] = true;
+      if (!Object.prototype.hasOwnProperty.call(base, path)) {
+        plan.push({ status: 'added', path: pathToDisk(path), bytes: files[path].size || 0 });
+      } else if (base[path] !== signature(files[path])) {
+        plan.push({ status: 'modified', path: pathToDisk(path), bytes: files[path].size || 0 });
+      }
+    });
+    Object.keys(base).sort().forEach(function (path) {
+      if (!seen[path]) plan.push({ status: 'deleted', path: pathToDisk(path), bytes: 0 });
+    });
+    return plan;
   }
 
   async function importFile(file, kind, ctx) {
@@ -482,6 +534,7 @@
       }
       report(progress, 'Reading assets...', handles.length, handles.length);
     } catch (_) {}
+    setBaseline();
     changed();
   }
 
@@ -516,24 +569,50 @@
       cache(path, new Blob([entries[diskPath]], { type: mime(path) }));
     });
     report(progress, 'Loading assets...', paths.length, paths.length);
+    setBaseline();
     changed();
   }
 
   async function writeToDirectory(dir, options) {
     options = options || {};
     var progress = options.progress;
+    var plan = options.plan || savePlan({ full: !!options.full });
     report(progress, 'Writing assets...');
+    if (!options.full && !plan.length) {
+      report(progress, 'Writing assets...', 0, 0);
+      return;
+    }
     var assetDir = await dir.getDirectoryHandle(ASSET_DIR, { create: true });
-    await removeMissing(assetDir, '');
-    var folderList = Object.keys(folders).filter(Boolean).sort();
+    if (options.full) await removeMissing(assetDir, '');
+    var deleted = plan.filter(function (item) { return item.status === 'deleted'; });
+    for (var d = 0; d < deleted.length; d++) await removeDiskAsset(dir, deleted[d].path);
+    var writeItems = plan.filter(function (item) { return item.status === 'added' || item.status === 'modified'; });
+    var folderList = foldersForWrite(writeItems);
     for (var f = 0; f < folderList.length; f++) await ensureFolder(assetDir, folderList[f]);
-    var paths = Object.keys(files).sort();
-    for (var i = 0; i < paths.length; i++) {
-      report(progress, 'Writing assets...', i, paths.length, paths[i]);
-      await writeBlob(assetDir, paths[i], files[paths[i]].blob);
+    for (var i = 0; i < writeItems.length; i++) {
+      var path = writeItems[i].path.slice(ASSET_DIR.length + 1);
+      report(progress, 'Writing assets...', i, writeItems.length, path);
+      await writeBlob(assetDir, path, files[path].blob);
       await yieldUI();
     }
-    report(progress, 'Writing assets...', paths.length, paths.length);
+    markSaved(plan);
+    report(progress, 'Writing assets...', writeItems.length, writeItems.length);
+  }
+
+  function foldersForWrite(items) {
+    var out = {};
+    (items || []).forEach(function (item) {
+      var path = String(item.path || '');
+      if (path.indexOf(ASSET_DIR + '/') === 0) path = path.slice(ASSET_DIR.length + 1);
+      var dir = path.split('/').slice(0, -1).join('/');
+      if (!dir) return;
+      var cur = '';
+      dir.split('/').forEach(function (part) {
+        cur = cur ? cur + '/' + part : part;
+        out[cur] = true;
+      });
+    });
+    return Object.keys(out).sort();
   }
 
   async function ensureFolder(root, path) {
@@ -575,6 +654,20 @@
     await writable.close();
   }
 
+  async function removeDiskAsset(root, diskPath) {
+    var path = String(diskPath || '');
+    if (path.indexOf(ASSET_DIR + '/') !== 0) return;
+    var parts = path.split('/');
+    var name = parts.pop();
+    var dir = root;
+    try {
+      for (var i = 0; i < parts.length; i++) {
+        dir = await dir.getDirectoryHandle(parts[i], { create: false });
+      }
+      await dir.removeEntry(name);
+    } catch (_) {}
+  }
+
   async function zipEntries(options) {
     options = options || {};
     var progress = options.progress;
@@ -595,6 +688,7 @@
     urls = {};
     hashes = {};
     folders = { '': true };
+    clearBaseline();
     version.set(version.peek() + 1);
   }
 
@@ -765,6 +859,9 @@
     loadFromZip: loadFromZip,
     writeToDirectory: writeToDirectory,
     zipEntries: zipEntries,
+    savePlan: savePlan,
+    setBaseline: setBaseline,
+    markSaved: markSaved,
     clear: clear,
     snapshot: snapshot,
     restore: restore,

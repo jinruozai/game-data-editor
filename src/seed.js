@@ -5,13 +5,13 @@
   'use strict';
 
   var BUILTIN = {
-    "id_num":     { name: "ID+Num",        base_type: "struct", type_render: "struct", default: { id: 0, num: 0 },    mem: "Reference id + quantity",       struct_def: { id_num:     { id: "ref_id", num: "int" } } },
-    "id_string":  { name: "ID+String",     base_type: "struct", type_render: "struct", default: { id: 0, str: "" },   mem: "Reference id + free text",      struct_def: { id_string:  { id: "ref_id", str: "string" } } },
-    "string_num": { name: "String+Num",    base_type: "struct", type_render: "struct", default: { str: "", num: 0 },  mem: "Free text + quantity",          struct_def: { string_num: { str: "string", num: "int" } } },
-    "img_num":    { name: "Image+Num",     base_type: "struct", type_render: "struct", default: { img: "", num: 0 },  mem: "Image asset + quantity",        struct_def: { img_num:    { img: "img", num: "int" } } },
-    "snd_num":    { name: "Audio+Num",     base_type: "struct", type_render: "struct", default: { snd: "", num: 0 },  mem: "Audio asset + quantity",        struct_def: { snd_num:    { snd: "snd", num: "int" } } },
-    "img_string": { name: "Image+String",  base_type: "struct", type_render: "struct", default: { img: "", str: "" }, mem: "Image asset + label",           struct_def: { img_string: { img: "img", str: "string" } } },
-    "snd_string": { name: "Audio+String",  base_type: "struct", type_render: "struct", default: { snd: "", str: "" }, mem: "Audio asset + label",           struct_def: { snd_string: { snd: "snd", str: "string" } } }
+    "id_num":     { name: "ID+Num",        base_type: "struct", type_render: "struct", default: [0, 0],   mem: "Reference id + quantity",       struct_def: { id_num:     { id: "ref_id", num: "int" } } },
+    "id_string":  { name: "ID+String",     base_type: "struct", type_render: "struct", default: [0, ""],  mem: "Reference id + free text",      struct_def: { id_string:  { id: "ref_id", str: "string" } } },
+    "string_num": { name: "String+Num",    base_type: "struct", type_render: "struct", default: ["", 0],  mem: "Free text + quantity",          struct_def: { string_num: { str: "string", num: "int" } } },
+    "img_num":    { name: "Image+Num",     base_type: "struct", type_render: "struct", default: ["", 0],  mem: "Image asset + quantity",        struct_def: { img_num:    { img: "img", num: "int" } } },
+    "snd_num":    { name: "Audio+Num",     base_type: "struct", type_render: "struct", default: ["", 0],  mem: "Audio asset + quantity",        struct_def: { snd_num:    { snd: "snd", num: "int" } } },
+    "img_string": { name: "Image+String",  base_type: "struct", type_render: "struct", default: ["", ""], mem: "Image asset + label",           struct_def: { img_string: { img: "img", str: "string" } } },
+    "snd_string": { name: "Audio+String",  base_type: "struct", type_render: "struct", default: ["", ""], mem: "Audio asset + label",           struct_def: { snd_string: { snd: "snd", str: "string" } } }
   };
 
   function icon(name, color) {
@@ -122,7 +122,7 @@
       [[0, 85],  [1, 20], [2, 8],  [3, 16]],
     ];
     roleIds.forEach(function (id, i) {
-      data[id].property = values[i].map(function (pair) { return { id: attrIds[pair[0]], num: pair[1] }; });
+      data[id].property = values[i].map(function (pair) { return [attrIds[pair[0]], pair[1]]; });
     });
   }
 

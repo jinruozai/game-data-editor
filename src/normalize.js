@@ -1,6 +1,6 @@
 /**
  * Value normalization + struct_def validation.
- * Normalize value toward target base_type: int | float | string | array.
+ * Normalize value toward target base_type: int | float | string | array | struct.
  * Returns { value, changed, failed, original }.
  */
 (function () {
@@ -41,6 +41,11 @@
     if (v == null || v === '') return { ok: true, v: [] };
     return { ok: true, v: [v] };
   }
+  function toStruct(v) {
+    if (Array.isArray(v)) return { ok: true, v: v };
+    if (v == null || v === '') return { ok: true, v: [] };
+    return { ok: false };
+  }
 
   function normalizeValue(value, baseType) {
     var original = value;
@@ -50,6 +55,7 @@
       case 'float': res = toFloat(value); break;
       case 'string': res = toString(value); break;
       case 'array': res = toArray(value); break;
+      case 'struct': res = toStruct(value); break;
       default: return { value: value, changed: false, failed: false, original: original };
     }
     if (res.ok) {

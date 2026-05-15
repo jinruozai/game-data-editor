@@ -194,7 +194,7 @@ id_num, id_string, string_num, img_num, snd_num, img_string, snd_string
 - `snd`: 字符串，推荐 `asset://...`。
 - `id` / `ref_id`: 实体引用值。当前内置类型基于 `int`，推荐写 JSON number；实体本身的 id key 仍是字符串。
 - `array`: JSON array。
-- `struct`: JSON object。快捷结构也按字段名保存，例如 `id_num` 是 `{ "id": 123, "num": 10 }`。
+- `struct`: JSON array。数组下标按 `struct_def` 字段声明顺序解释，例如 `id_num` 是 `[123, 10]`，其中第 0 位是 `id`，第 1 位是 `num`。
 
 枚举：
 

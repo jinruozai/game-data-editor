@@ -2190,6 +2190,10 @@ body.ef-dragging-vertical,   body.ef-dragging-vertical *   { cursor: ns-resize !
   gap: var(--ef-space-2);
   padding: var(--ef-space-1) 0;
 }
+.ef-ui-property-panel .ef-ui-array-input .ef-ui-struct-input > .ef-ui-struct-input-row {
+  grid-template-columns: minmax(0, 5ch) minmax(0, 1fr);
+  gap: var(--ef-space-2);
+}
 .ef-ui-property-panel .ef-ui-struct-input > .ef-ui-struct-input-row > .ef-ui-struct-input-label {
   font: var(--ef-fs-sm) var(--ef-font-ui);
   color: var(--ef-fg-2);

@@ -226,8 +226,8 @@
     else if (base === 'float' && !(typeof value === 'number' && Number.isFinite(value))) errors.push(err(path, 'Expected float'));
     else if (base === 'string' && typeof value !== 'string') errors.push(err(path, 'Expected string'));
     else if (base === 'bool' && typeof value !== 'boolean') errors.push(err(path, 'Expected bool'));
-    else if (base === 'array' && !Array.isArray(value)) errors.push(err(path, 'Expected array'));
-    else if ((base === 'struct' || base === 'var') && value != null && (typeof value !== 'object' || Array.isArray(value))) errors.push(err(path, 'Expected object'));
+    else if ((base === 'array' || base === 'struct') && !Array.isArray(value)) errors.push(err(path, 'Expected array'));
+    else if (base === 'var' && value != null && (typeof value !== 'object' || Array.isArray(value))) errors.push(err(path, 'Expected object'));
     if ((resolved.type_render === 'img' || resolved.type_render === 'snd') && typeof value === 'string' && value.indexOf('asset://') === 0) {
       if (window.ProjectIO && ProjectIO.assets && !ProjectIO.assets.exists(value)) errors.push(err(path, 'Asset not found: ' + value));
     }

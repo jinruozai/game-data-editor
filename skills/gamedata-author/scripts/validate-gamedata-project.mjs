@@ -37,13 +37,13 @@ const builtinConfig = {
   enum_string: { base_type: 'string', type_render: 'enum' },
   range_int: { base_type: 'int', type_render: 'range' },
   range_float: { base_type: 'float', type_render: 'range' },
-  id_num: { base_type: 'struct', type_render: 'struct', struct_def: { id_num: { id: 'ref_id', num: 'int' } } },
-  id_string: { base_type: 'struct', type_render: 'struct', struct_def: { id_string: { id: 'ref_id', str: 'string' } } },
-  string_num: { base_type: 'struct', type_render: 'struct', struct_def: { string_num: { str: 'string', num: 'int' } } },
-  img_num: { base_type: 'struct', type_render: 'struct', struct_def: { img_num: { img: 'img', num: 'int' } } },
-  snd_num: { base_type: 'struct', type_render: 'struct', struct_def: { snd_num: { snd: 'snd', num: 'int' } } },
-  img_string: { base_type: 'struct', type_render: 'struct', struct_def: { img_string: { img: 'img', str: 'string' } } },
-  snd_string: { base_type: 'struct', type_render: 'struct', struct_def: { snd_string: { snd: 'snd', str: 'string' } } },
+  id_num: { base_type: 'struct', type_render: 'struct', default: [0, 0], struct_def: { id_num: { id: 'ref_id', num: 'int' } } },
+  id_string: { base_type: 'struct', type_render: 'struct', default: [0, ''], struct_def: { id_string: { id: 'ref_id', str: 'string' } } },
+  string_num: { base_type: 'struct', type_render: 'struct', default: ['', 0], struct_def: { string_num: { str: 'string', num: 'int' } } },
+  img_num: { base_type: 'struct', type_render: 'struct', default: ['', 0], struct_def: { img_num: { img: 'img', num: 'int' } } },
+  snd_num: { base_type: 'struct', type_render: 'struct', default: ['', 0], struct_def: { snd_num: { snd: 'snd', num: 'int' } } },
+  img_string: { base_type: 'struct', type_render: 'struct', default: ['', ''], struct_def: { img_string: { img: 'img', str: 'string' } } },
+  snd_string: { base_type: 'struct', type_render: 'struct', default: ['', ''], struct_def: { snd_string: { snd: 'snd', str: 'string' } } },
 };
 
 function fail(msg) { errors.push(msg); }
@@ -194,14 +194,14 @@ function inspectValue(value, fieldDef, where) {
     return;
   }
   if (base === 'struct') {
-    if (!value || typeof value !== 'object' || Array.isArray(value)) {
-      warn(`${where}: expected object`);
+    if (!Array.isArray(value)) {
+      warn(`${where}: expected array`);
       return;
     }
     const fields = normalizeStructDef(resolved.struct_def);
-    Object.keys(fields).forEach((field) => {
-      if (Object.prototype.hasOwnProperty.call(value, field)) {
-        inspectValue(value[field], fields[field], `${where}.${field}`);
+    Object.keys(fields).forEach((field, i) => {
+      if (i < value.length) {
+        inspectValue(value[i], fields[field], `${where}.${field}`);
       }
     });
     return;

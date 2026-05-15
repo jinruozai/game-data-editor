@@ -16,8 +16,8 @@
  *   - log   : tab-collapsible (bottom dock, starts collapsed)
  *   - right : no toolbar      (single inspector panel)
  *
- * State.openTable() / closeTab() / pinTab() delegate to layout.addPanel /
- * removePanel / promotePanel. activeTable signal syncs from the layout tree.
+ * State.openTable() / closeTab() / pinTab() delegate through GDE.layout.
+ * activeTable signal syncs from the layout tree.
  */
 (function () {
   'use strict';
@@ -233,16 +233,7 @@
   //    handle.subscribe re-fires whenever the layout tree changes; peek on
   //    activeTable so this callback never subscribes to its own writes.
   track(handle.subscribe(function (t) {
-    var found = null;
-    (function walk(n) {
-      if (!n || found) return;
-      if (n.type === 'dock' && n.name === 'center') {
-        var p = n.panels.find(function (pp) { return pp.id === n.activeId; });
-        if (p && p.props) found = p.props.pathKey || null;
-      } else if (n.type === 'split') {
-        n.children.forEach(walk);
-      }
-    })(t);
+    var found = GDE.layout.activeTableFromTree(t);
     if (State.activeTable.peek() !== found) State.activeTable.set(found);
   }));
 

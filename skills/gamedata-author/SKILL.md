@@ -30,7 +30,7 @@ Load `references/data-contract.md` for the full schema and invariants. Load `ref
 - Entity fields must come from that table's `_table.struct_def`.
 - Every `struct_def[field].type` must resolve to a builtin type, a project `type_config` entry, or a known compound type.
 - When adding a domain field such as `currency`, `tag`, `rarity`, `attribute`, or `damage_type`, add or reuse a project `type_config` entry with the same field/type name so future tables converge on one dictionary.
-- Use `ref_id` for links to other entities; use `id_num` for `{ "id": refId, "num": quantity }`; use arrays for lists.
+- Use `ref_id` for links to other entities; use `id_num` as `[refId, quantity]`; use arrays for lists. Struct values are arrays interpreted by `struct_def` field order.
 - Do not duplicate referenced entity data inside another entity. Store the target id and resolve by id.
 - Use `asset://relative/path.ext` for project assets. The disk file must live under `asset/relative/path.ext`.
 - Project-specific editor behavior belongs in a separate editor extension project, not inside the data directory.

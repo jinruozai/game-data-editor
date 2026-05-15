@@ -46,9 +46,13 @@ http://localhost:8080
 ├── logo.png                   # App icon
 ├── src/                       # Editor source code
 │   ├── ai/                    # AI resources, tools, patch handling, and skills
+│   ├── app/                   # App shell, layout bridge, toolbar, and app services
+│   ├── cardstyle/             # Card style scene utilities and render adapters
+│   ├── inspector/             # Inspector providers and field renderers
 │   ├── panels/                # Dockable editor panels
 │   ├── project-io/            # Project import/export and workspace IO
-│   └── main.js                # App layout and startup logic
+│   ├── typeconfig/            # Type configuration schema helpers
+│   └── state.js               # Project data signals and domain commands
 ├── vendor/                    # Runtime frontend dependencies
 ├── docs/                      # Data format and AI integration documentation
 ├── skills/                    # Project-local AI skills
@@ -105,8 +109,9 @@ This is a static frontend project with no required bundling step. Edit the sourc
 
 Important entry points:
 
-- `src/main.js`: Creates the editor layout, mounts panels, and installs the AI adapter.
-- `src/state.js`: Manages project data, open tables, selection state, logs, and dirty state.
+- `src/app/main.js`: Creates the editor layout, mounts panels, and installs the AI adapter.
+- `src/app/layout.js`: Owns dock/panel operations and tab routing behind the `GDE.layout` service.
+- `src/state.js`: Manages project data, selection state, logs, dirty state, and domain commands.
 - `src/project-io/`: Handles directory projects, ZIP projects, assets, and data encoding.
 - `src/panels/`: Implements table views, inspectors, assets, search, history, type configuration, and card-style tools.
 - `src/ai/`: Implements GameDataEditor-specific AI resources, tools, patches, and skills.

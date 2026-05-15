@@ -32,6 +32,140 @@ body {
 .gde-topbar .gde-status {
   opacity: .84;
 }
+.gde-save-plan-btn {
+  height: 24px;
+  margin-left: 8px;
+  padding: 0 8px;
+  border: 1px solid var(--gde-line);
+  border-radius: var(--ef-r-2);
+  background: var(--gde-item-bg);
+  color: var(--ef-fg-1);
+  font: 12px var(--ef-font-ui);
+  cursor: pointer;
+}
+.gde-save-plan-btn:hover {
+  color: var(--ef-fg-0);
+  border-color: var(--ef-border-hover);
+  background: var(--gde-panel-chrome-hover);
+}
+.ef-ui-modal.gde-save-plan-modal {
+  width: min(1120px, 92vw);
+  max-width: min(1120px, 92vw);
+}
+.ef-ui-modal.gde-save-plan-modal .ef-ui-modal-body {
+  overflow-x: hidden;
+}
+.gde-save-plan {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+.gde-save-plan-controls {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.gde-save-plan-select-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--ef-fg-1);
+  font: 12px var(--ef-font-ui);
+  cursor: pointer;
+}
+.gde-save-plan-summary {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.gde-save-plan-chip,
+.gde-save-plan-status {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 7px;
+  border-radius: var(--ef-r-2);
+  font: 11px var(--ef-font-mono);
+  text-transform: uppercase;
+}
+.gde-save-plan-chip.is-added,
+.gde-save-plan-row.is-added .gde-save-plan-status {
+  background: color-mix(in srgb, var(--ef-success) 18%, transparent);
+  color: var(--ef-success);
+}
+.gde-save-plan-chip.is-modified,
+.gde-save-plan-row.is-modified .gde-save-plan-status {
+  background: color-mix(in srgb, var(--ef-info) 18%, transparent);
+  color: var(--ef-info);
+}
+.gde-save-plan-chip.is-deleted,
+.gde-save-plan-row.is-deleted .gde-save-plan-status {
+  background: color-mix(in srgb, var(--ef-error) 18%, transparent);
+  color: var(--ef-error);
+}
+.gde-save-plan-list {
+  height: min(560px, 58vh);
+  overflow-y: auto;
+  overflow-x: hidden;
+  border: 1px solid var(--gde-line);
+  border-radius: var(--ef-r-2);
+  background: var(--gde-well-bg);
+  min-width: 0;
+  box-sizing: border-box;
+}
+.gde-save-plan-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 9px;
+  border-bottom: 1px solid var(--gde-line-soft);
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+}
+.gde-save-plan-check {
+  flex: 0 0 auto;
+}
+.gde-save-plan-row:last-child {
+  border-bottom: 0;
+}
+.gde-save-plan-path {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ef-fg-0);
+  font: 12px var(--ef-font-mono);
+}
+.gde-save-plan-status {
+  flex: 0 0 96px;
+  justify-content: center;
+}
+.gde-save-plan-meta,
+.gde-save-plan-empty {
+  color: var(--ef-fg-3);
+  font: 12px var(--ef-font-ui);
+}
+.gde-save-plan-meta {
+  flex: 0 1 96px;
+  min-width: 0;
+  overflow: hidden;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.gde-save-plan-empty {
+  padding: 18px;
+  text-align: center;
+}
+.gde-save-plan-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  width: 100%;
+}
 
 .ef-dock {
   background: var(--gde-panel-bg);
